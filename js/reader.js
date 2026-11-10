@@ -85,7 +85,11 @@ function updateAutoReadControls(){
  if(start){start.textContent=autoReadPaused?'▶ Resume':'▶ Auto-read';start.disabled=autoReadRunning&&!autoReadPaused}
  if(pause)pause.disabled=!autoReadRunning||autoReadPaused;
  if(stop)stop.disabled=!autoReadRunning&&!autoReadPaused;
- if(speed&&value)value.textContent=speed.value;
+ if(speed&&value){const rate=autoReadCharsPerMinute(Number(speed.value||0));value.textContent=rate>=1000?(rate/1000).toFixed(rate>=10000?0:1)+'k':' '+Math.round(rate);value.title=Math.round(rate).toLocaleString()+' characters/minute'}
+}
+function autoReadCharsPerMinute(position){
+ const min=30,max=30000;
+ return min*Math.pow(max/min,Math.max(0,Math.min(100,position))/100);
 }
 function highlightAutoReadParagraph(){
  const nodes=autoReadNodes();
