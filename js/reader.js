@@ -120,7 +120,7 @@ async function advanceAutoRead(){
    state.chapter++;
    autoReadIndex=0;
    drawReader();
-   window.scrollTo({top:0,behavior:'instant'});
+   window.scrollTo({top:0,behavior:'auto'});
   }else{
    stopAutoRead();
    toast('Reached the end of the novel');
