@@ -6,4 +6,13 @@ export function modal(title,body,setup){$('modalHost').innerHTML='<div class="mo
 export function closeModal(){$('modalHost').innerHTML=''}
 export function dataURL(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(r.error);r.readAsDataURL(file)})}
 export function download(blob,name){const a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download=name.replace(/[\\/:*?"<>|]/g,'_');a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}
-export function paragraphs(text){return String(text||'').split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean)}
+export function paragraphs(text){
+ const normalized=String(text||'').replace(/\r\n?/g,'\n').replace(/\u00a0/g,' ');
+ const blocks=normalized.split(/\n[ \t]*\n+/);
+ const result=[];
+ for(const block of blocks){
+  const lines=block.split('\n').map(line=>line.trim()).filter(Boolean);
+  result.push(...lines);
+ }
+ return result;
+}
