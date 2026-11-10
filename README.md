@@ -11,6 +11,9 @@ A local-first web reader for personal novels and EPUBs. It runs as a static webs
 - Insert images into chapters at the cursor.
 - Export and restore a complete local backup.
 - Paste a chapter directly into a new book or save it for later.
+- Visual auto-read with synchronized paragraph highlighting and speech.
+- Optional Kokoro local TTS: the browser downloads the quantized model on first use, then Transformers.js caches model/WASM files in browser storage for later offline use.
+- Offline app-shell caching through a service worker.
 
 ## Run
 
@@ -37,3 +40,17 @@ The app deliberately keeps the existing `quietbook-v2` IndexedDB database and `i
 - `js/utils.js` — shared helpers
 
 Optional Gotham Pro font files can be placed in `fonts/` using the filenames referenced by the stylesheet. Without them, the reader falls back to the system sans-serif font.
+
+## Kokoro offline TTS
+
+In the reader toolbar, set **Engine → Kokoro (offline)** and start Auto-read. The first run requires an internet connection to download the Kokoro JavaScript runtime and the quantized ONNX model (roughly 90–95 MB, plus tokenizer/voice/runtime assets). Model files are cached by Transformers.js in the browser Cache API; the app shell and runtime modules are cached by the service worker. Later reading can work offline after the first load has completed.
+
+- Default model: `onnx-community/Kokoro-82M-v1.0-ONNX`
+- Runtime: `kokoro-js` 1.2.1
+- Inference: WASM with 8-bit quantization (`q8`) for a smaller download and broad browser compatibility.
+- Default voice: `af_heart`; several English voices are selectable.
+- No text is sent to a TTS API. Speech is generated on the device.
+- Use a secure origin (GitHub Pages HTTPS or localhost). Browser storage may still be cleared or evicted by the browser; offline availability is not permanent if that happens.
+- The first model load can take a while and uses memory. Close other heavy tabs if the browser runs out of memory.
+
+The existing **System** engine remains available as a fallback. Kokoro is lazy-loaded only when selected and Auto-read is started.
