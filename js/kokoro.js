@@ -1,7 +1,7 @@
 // Kokoro browser-local TTS. Model files are downloaded from Hugging Face
 // on first use and cached by Transformers.js in the browser Cache API.
 const MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
-const MODULE_URL = 'https://esm.sh/kokoro-js@1.2.1?bundle';
+const MODULE_URL = 'https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm';
 let enginePromise = null;
 let engine = null;
 let audioContext = null;
