@@ -50,3 +50,8 @@
  .auto-speed-control{margin-left:auto}
  .auto-speed-control input{width:76px}
 }
+
+/* Wider logarithmic auto-read speed control */
+.auto-speed-control input{width:clamp(150px,22vw,260px);height:6px;cursor:pointer;accent-color:#8c70ff}
+.auto-speed-control span{min-width:72px;text-align:right;font-variant-numeric:tabular-nums}
+@media(max-width:650px){.auto-speed-control input{width:clamp(120px,34vw,190px)}}
