@@ -51,12 +51,17 @@ self.onmessage = event => {
   if (message.type !== 'generate') return;
   queue = queue.then(async () => {
     const tts = await loadModel();
+    const started = performance.now();
     const result = await tts.generate(message.text, { voice: message.voice });
+    const inferenceMs = performance.now() - started;
     const samples = result.audio;
     if (!samples?.length) throw new Error('Kokoro returned empty audio');
+    const sampleRate = result.sampling_rate || 24000;
+    const audioSeconds = samples.length / sampleRate;
+    const realTimeFactor = audioSeconds > 0 ? inferenceMs / 1000 / audioSeconds : null;
     // Copy to a transferable buffer; don't clone a large PCM array across threads.
     const transferable = new Float32Array(samples);
-    send({ type: 'audio', id: message.id, samples: transferable.buffer, sampleRate: result.sampling_rate || 24000 }, [transferable.buffer]);
+    send({ type: 'audio', id: message.id, samples: transferable.buffer, sampleRate, inferenceMs, audioSeconds, realTimeFactor, backend: 'wasm' }, [transferable.buffer]);
   }).catch(error => {
     send({ type: 'error', id: message.id, message: error?.message || String(error) });
   });
