@@ -1,49 +1,47 @@
-# Quiet Dash Reader
+# Quiet Reader
 
-A local-first web reader for personal novels and EPUBs. It runs as a static website; book content, reading progress, bookmarks and highlights are stored in the browser's IndexedDB.
+Quiet Reader is a local-first web reader for personal novels and EPUB books. It runs as a static website; books, notes, reading progress, bookmarks and highlights are stored in the browser's IndexedDB.
 
 ## Features
 
-- Personal library: create novels, edit chapters, lock editing, add cover images, and keep a separate per-novel notes page.
-- Novel-wide search: find chapter titles and text across the entire book, with snippets and direct jumps to matching passages.
-- EPUB import and export.
-- Reader controls: chapter navigation, saved progress, theme, text size and reading width.
-- Persistent text highlights with notes, plus chapter bookmarks and a highlights manager.
-- Insert images into chapters at the cursor.
-- Export and restore a complete local backup.
-- Paste a chapter directly into a new book or save it for later.
-- Visual auto-read with synchronized paragraph highlighting and speech.
-- Offline app-shell caching through a service worker.
+### Library and novel management
+- Create personal novels, edit chapter titles and text, add cover images, and optionally lock editing.
+- Import EPUB, PDF and TXT files; import a folder of TXT files as ordered chapters.
+- Export novels as EPUB and export or restore a complete local JSON backup.
+- Keep separate notes for each novel, including source links, summaries, character details and reading notes.
+- Organize novels with tags and filter the library by source or tag.
+
+### Reading experience
+- Reader toolbar keeps chapter bookmarking and visual auto-read start, pause and stop controls close at hand.
+- Reading settings contain scroll pacing, text-to-speech, speech speed, speech engine and voice selection.
+- Choose system text-to-speech or the experimental Kokoro WebGPU engine.
+- Adjust reader theme, text size and reading width; jump directly to any chapter.
+- Search across every chapter title and paragraph in the open novel. Results identify title or text matches, show snippets and jump to the matching chapter and passage.
+- Save text highlights in multiple colors, attach notes, and manage highlights and bookmarks.
+- Insert images into chapters and switch supported chapter layouts between normal and section views.
+- Reading progress is saved locally.
+
+### Kokoro text-to-speech (WebGPU)
+- Uses kokoro-js 1.2.1 and the `dev-amarnadh-gandham/Kokoro-82M-v1.0-ONNX-webgpu` model.
+- Runs FP32 inference through ONNX Runtime WebGPU in a dedicated Web Worker.
+- The model is a graph-patched Kokoro-82M ONNX export intended to work around an ONNX Runtime WebGPU ConvTranspose compatibility issue.
+- Paragraphs are split into sentences. The reader synthesizes ahead into a rolling queue (up to 10 sentences) while ready audio is played. Paragraph highlighting stays synchronized with the active sentence.
+- This is sentence-level incremental playback, not token-by-token audio streaming: an individual sentence must finish synthesis before it can play.
+- Scroll pacing and speech rate are independent. The scroll slider controls visual reading pace; the Speech speed selector controls speech generation.
+- Kokoro generates speech on-device after the required model and runtime assets have been downloaded. Novel text is not sent to a remote TTS API.
+- The default Kokoro voice is `af_heart`; the reader also exposes the available Kokoro voice selector.
+- Worker diagnostics report inference time, audio duration and real-time factor (RTF) in the browser console. RTF below 1.0 means audio was generated faster than its playback duration.
+
+**WebGPU requirements and first run:** Use a supported browser with hardware acceleration and a working WebGPU GPU adapter. Serve the app from HTTPS (for example, GitHub Pages) or localhost; opening the HTML file directly is not supported for the module-based app. The first run downloads model/runtime assets and may compile GPU shaders, so initial setup and generation can take longer. This experimental branch intentionally does not silently fall back to WASM; if WebGPU is unavailable, it reports an error so the selected backend remains clear.
 
 ## Run
 
-Open `index.html` through a local static server (ES modules and IndexedDB require a browser origin), or enable GitHub Pages for the repository. No build step is required. JSZip is loaded from jsDelivr for EPUB support.
+Open the repository through a local static server, or enable GitHub Pages. No build step is required. JSZip and PDF.js are loaded from CDNs for EPUB and PDF support; Kokoro runtime/model assets are also fetched when the Kokoro engine is used.
 
-## Storage compatibility
+## Local storage and compatibility
 
-The app deliberately keeps the existing `quietbook-v2` IndexedDB database and `items` object store. If you used the earlier QuietBook reader in the same browser profile and origin, existing records remain in place. Export a backup before making major changes or clearing browser data.
+The app uses the `quietbook-v2` IndexedDB database and its `items` object store. Existing records from the earlier reader remain in the same browser profile and origin. The app does not require an account or application server for its library. Browser storage is not a substitute for a backup: export a backup before clearing site data, changing browser profiles or testing experimental builds.
 
-## Kokoro WebGPU experiment
+## Branch note
 
-This branch changes the experimental Kokoro engine from q8/WASM to WebGPU/FP32 so it can be compared against `adding-tts-feature-test`.
-
-- Model: `dev-amarnadh-gandham/Kokoro-82M-v1.0-ONNX-webgpu`, a graph-patched equivalent of Kokoro-82M intended to correct an ONNX Runtime WebGPU ConvTranspose issue in the upstream export.
-- Runtime: `kokoro-js` 1.2.1 from jsDelivr.
-- Inference: WebGPU in a dedicated Web Worker; FP32 model weights.
-- Voice: `af_heart` by default. The kokoro-js voice assets remain loaded from the upstream ONNX community model repository.
-- No text is sent to a TTS API. Speech is generated on-device.
-- WebGPU requires a supported browser, GPU adapter, hardware acceleration, and a secure origin (GitHub Pages HTTPS or localhost). This branch intentionally reports an error rather than silently falling back to WASM, so the backend being measured is unambiguous.
-- First use downloads model/runtime assets and compiles GPU shaders. The first generation can therefore be slower than subsequent generations.
-- The worker logs each generation's inference time, audio duration and real-time factor (RTF) in the browser console. RTF below 1.0 means audio was generated faster than it plays; lower is better.
-
-**Important:** This is an experimental comparison branch, not a replacement for the existing WASM branch. Export a backup before testing. The upstream model graph is patched for WebGPU compatibility; audio quality should be listened to and checked before relying on it.
-
-## Sentence-streaming Kokoro playback
-
-The WebGPU test branch now splits reader paragraphs into individual sentences. It starts synthesis for the current sentence and keeps a rolling look-ahead queue of up to 10 sentences. As each sentence finishes, the next ready sentence is played; synthesis continues in the worker while audio is playing. Paragraph highlighting remains synchronized to the paragraph containing the active sentence.
-
-This is sentence-level incremental playback, not token-by-token waveform streaming: each sentence must finish synthesis before that sentence can play. If the GPU cannot synthesize sentences faster than real-time, occasional waits can still occur. The worker's inference-time / audio-duration RTF logs remain available for measuring this.
-
-## Independent scrolling and speech speed
-
-The auto-read slider controls visual scrolling / focus pacing only. The separate Speech selector offers 1×, 1.25×, 1.5× and 2×. Kokoro receives this speed value during sentence synthesis, while generated audio plays at its original sample rate (playback rate 1.0) so the pitch is not raised by speeding up the audio buffer. The system speech engine uses the same Speech selector through its native utterance rate.
+`kokoro-webgpu-test` is an experimental comparison branch for the WebGPU/FP32 Kokoro engine. It also contains the current reader, library, novel-wide search, per-novel notes and interface improvements. It is separate from the original upstream repository and should not be treated as a replacement for a stable WASM build without testing the target browser and hardware.
