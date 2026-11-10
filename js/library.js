@@ -1,4 +1,5 @@
 import {state,freshBook,setScreen} from './state.js';import {getAll,put,remove} from './db.js';import {$,esc,toast,modal} from './utils.js';import {openReader} from './reader.js';
+let currentBookTab='chapters';
 export async function refresh(){const items=await getAll();state.books=items.filter(x=>x.kind==='book');state.pastes=items.filter(x=>x.kind==='paste');drawLibrary()}
 export function drawLibrary(){
  const availableTags=[...new Set(state.books.flatMap(b=>Array.isArray(b.tags)?b.tags:[]).map(t=>String(t).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
@@ -18,8 +19,22 @@ export function drawLibrary(){
  if(!state.pastes.length)listEl.innerHTML='<div class="empty">No saved pasted chapters.</div>';
  for(const p of state.pastes){const row=document.createElement('div');row.className='chapter-row';row.innerHTML='<div class="chapter-name"><b>'+esc(p.title||'Untitled chapter')+'</b><div class="tiny muted">'+(p.text||'').length+' characters</div></div><button data-paste-open="'+p.id+'">Open</button><button data-paste-delete="'+p.id+'">×</button>';listEl.append(row)}
 }
-export function openBook(id){state.book=state.books.find(b=>b.id===id);if(!state.book)return;drawBook();setScreen('book')}
-export function drawBook(){const b=state.book;if(!b)return;$('detailTitle').textContent=b.title;$('detailAuthor').textContent=b.author||'Unknown author';$('detailCover').innerHTML=b.cover?'<img src="'+b.cover+'" alt="">':'▤';$('lockLabel').textContent=b.locked?'🔒 Editing locked':'🔓 Editing enabled';$('lockBook').textContent=b.locked?'Unlock editing':'Lock editing';$('addChapter').disabled=b.locked;$('addTxtChapter').disabled=b.locked;$('addTxtChapters').disabled=b.locked;$('editDetails').disabled=b.locked;$('changeCover').disabled=b.locked;const el=$('chapterList');el.innerHTML='';if(!b.chapters.length)el.innerHTML='<div class="empty">No chapters yet. Add your first chapter.</div>';b.chapters.forEach((c,i)=>{const row=document.createElement('div');row.className='chapter-row';row.innerHTML='<div class="chapter-name" data-read="'+i+'"><b>'+esc(c.title||'Chapter '+(i+1))+'</b><div class="tiny muted">'+(c.text||'').length+' characters</div></div><button data-edit="'+i+'" '+(b.locked?'disabled':'')+'>Edit</button><button data-read-button="'+i+'">Read</button>';el.append(row)})}
+export function openBook(id){state.book=state.books.find(b=>b.id===id);if(!state.book)return;currentBookTab='chapters';drawBook();setScreen('book')}
+export function drawBook(){const b=state.book;if(!b)return;$('detailTitle').textContent=b.title;$('bookNotes').value=b.notes||'';setBookTab(currentBookTab);$('detailAuthor').textContent=b.author||'Unknown author';$('detailCover').innerHTML=b.cover?'<img src="'+b.cover+'" alt="">':'▤';$('lockLabel').textContent=b.locked?'🔒 Editing locked':'🔓 Editing enabled';$('lockBook').textContent=b.locked?'Unlock editing':'Lock editing';$('addChapter').disabled=b.locked;$('addTxtChapter').disabled=b.locked;$('addTxtChapters').disabled=b.locked;$('editDetails').disabled=b.locked;$('changeCover').disabled=b.locked;const el=$('chapterList');el.innerHTML='';if(!b.chapters.length)el.innerHTML='<div class="empty">No chapters yet. Add your first chapter.</div>';b.chapters.forEach((c,i)=>{const row=document.createElement('div');row.className='chapter-row';row.innerHTML='<div class="chapter-name" data-read="'+i+'"><b>'+esc(c.title||'Chapter '+(i+1))+'</b><div class="tiny muted">'+(c.text||'').length+' characters</div></div><button data-edit="'+i+'" '+(b.locked?'disabled':'')+'>Edit</button><button data-read-button="'+i+'">Read</button>';el.append(row)})}
+
+export function setBookTab(tab){
+ currentBookTab=tab==='notes'?'notes':'chapters';
+ $('bookChaptersTab')?.classList.toggle('hidden',currentBookTab!=='chapters');
+ $('bookNotesTab')?.classList.toggle('hidden',currentBookTab!=='notes');
+ $('bookTabs')?.querySelectorAll('[data-book-tab]').forEach(button=>button.classList.toggle('active',button.dataset.bookTab===currentBookTab));
+}
+export async function saveBookNotes(){
+ if(!state.book)return;
+ state.book.notes=$('bookNotes').value;
+ state.book.updated=Date.now();
+ await put(state.book);
+ toast('Notes saved');
+}
 export function createNovel(){modal('Create a novel','<div class="stack"><label>Title<input id="newTitle" placeholder="Novel title"></label><label>Author (optional)<input id="newAuthor"></label><label>Tags (comma-separated)<input id="newTags" placeholder="cultivation, xianxia, fantasy"></label><button id="createNow" class="primary">Create novel</button></div>',()=>{$('createNow').onclick=async()=>{const b=freshBook('manual',$('newTitle').value.trim()||'Untitled novel');b.author=$('newAuthor').value.trim();b.tags=[...new Set($('newTags').value.split(',').map(t=>t.trim().replace(/^#/,'' )).filter(Boolean))];await put(b);await refresh();openBook(b.id);$('modalHost').innerHTML=''}})}
 export async function handleLibraryClick(e){const btn=e.target.closest('button');if(!btn)return;const id=btn.dataset.open||btn.dataset.continue||btn.dataset.delete;if(id){const b=state.books.find(x=>x.id===id);if(btn.dataset.delete!==undefined){if(confirm('Delete this book and its local data?')){await remove(id);await refresh()}}else{state.book=b;drawBook();if(btn.dataset.continue!==undefined)openReader(b.progress?.chapter||0);else setScreen('book')}return}const pid=btn.dataset.pasteOpen||btn.dataset.pasteDelete;if(pid){const p=state.pastes.find(x=>x.id===pid);if(btn.dataset.pasteDelete!==undefined){if(confirm('Delete this saved chapter?')){await remove(pid);await refresh()}}else{$('pasteTitle').value=p.title||'';$('pasteText').value=p.text||'';setScreen('paste')}}}
 export async function savePasteAsBook(read=false){const text=$('pasteText').value.trim(),title=$('pasteTitle').value.trim();if(!text)return toast('Paste chapter text first');const b=freshBook('manual',title||'Pasted chapter');b.chapters=[{title:title||'Chapter 1',text,images:[]}];await put(b);await refresh();state.book=b;if(read)openReader(0);else{openBook(b.id);toast('Saved to library')}}
