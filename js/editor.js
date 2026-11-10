@@ -3,3 +3,21 @@ export function editChapter(index){if(state.book.locked)return toast('Unlock thi
 export async function saveChapter(){const c={title:$('editChapterTitle').value.trim(),text:$('editChapterText').value,images:state.editIndex==null?(state.pendingImages||[]):(state.book.chapters[state.editIndex].images||[])};delete state.pendingImages;if(state.editIndex==null)state.book.chapters.push(c);else state.book.chapters[state.editIndex]=c;state.book.updated=Date.now();await put(state.book);await refresh();drawBook();setScreen('book');toast('Chapter saved')}
 export async function deleteChapter(){if(state.editIndex==null||!confirm('Delete this chapter?'))return;state.book.chapters.splice(state.editIndex,1);await put(state.book);await refresh();drawBook();setScreen('book')}
 export async function insertImage(file){if(!file)return;const data=await dataURL(file),id=uid(),ta=$('editChapterText'),pos=ta.selectionStart;ta.setRangeText('\n[IMAGE:'+id+']\n',pos,ta.selectionEnd,'end');const image={id,data,after:ta.value.slice(0,pos).split(/\n\s*\n/).length};if(state.editIndex==null){state.pendingImages=state.pendingImages||[];state.pendingImages.push(image)}else{state.book.chapters[state.editIndex].images=state.book.chapters[state.editIndex].images||[];state.book.chapters[state.editIndex].images.push(image)}toast('Image inserted at cursor')}
+export async function importTextFiles(fileList){
+ const files=[...fileList].filter(f=>/\.txt$/i.test(f.name));
+ if(!files.length)return toast('No .txt files found');
+ const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
+ files.sort((a,b)=>collator.compare(a.webkitRelativePath||a.name,b.webkitRelativePath||b.name));
+ const imported=[];
+ for(const file of files){
+  const text=(await file.text()).replace(/^\uFEFF/,'').trim();
+  if(!text)continue;
+  const relative=file.webkitRelativePath||file.name;
+  const base=relative.split('/').pop().replace(/\.txt$/i,'');
+  imported.push({title:base||'Untitled chapter',text,images:[]});
+ }
+ if(!imported.length)return toast('The selected text files are empty');
+ state.book.chapters.push(...imported);
+ state.book.updated=Date.now();
+ await put(state.book);await refresh();drawBook();toast(imported.length+' chapter'+(imported.length===1?'':'s')+' imported');
+}
