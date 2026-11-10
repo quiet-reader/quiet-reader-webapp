@@ -12,7 +12,6 @@ A local-first web reader for personal novels and EPUBs. It runs as a static webs
 - Export and restore a complete local backup.
 - Paste a chapter directly into a new book or save it for later.
 - Visual auto-read with synchronized paragraph highlighting and speech.
-- Optional Kokoro local TTS: the browser downloads the quantized model on first use, then Transformers.js caches model/WASM files in browser storage for later offline use.
 - Offline app-shell caching through a service worker.
 
 ## Run
@@ -23,34 +22,17 @@ Open `index.html` through a local static server (ES modules and IndexedDB requir
 
 The app deliberately keeps the existing `quietbook-v2` IndexedDB database and `items` object store. If you used the earlier QuietBook reader in the same browser profile and origin, existing records remain in place. Export a backup before making major changes or clearing browser data.
 
-## Project layout
+## Kokoro WebGPU experiment
 
-- `index.html` — application shell
-- `css/main.css` — layout, themes and responsive styling
-- `js/app.js` — event wiring and startup
-- `js/db.js` — IndexedDB access
-- `js/library.js` — library and book management
-- `js/reader.js` — chapter rendering, navigation and progress
-- `js/editor.js` — chapter editing and image insertion
-- `js/highlights.js` — highlights, notes and bookmarks
-- `js/epub.js` — EPUB import/export
-- `js/backup.js` — local backup and restore
-- `js/themes.js` — appearance preferences
-- `js/state.js` — shared application state
-- `js/utils.js` — shared helpers
+This branch changes the experimental Kokoro engine from q8/WASM to WebGPU/FP32 so it can be compared against `adding-tts-feature-test`.
 
-Optional Gotham Pro font files can be placed in `fonts/` using the filenames referenced by the stylesheet. Without them, the reader falls back to the system sans-serif font.
+- Model: `dev-amarnadh-gandham/Kokoro-82M-v1.0-ONNX-webgpu`, a graph-patched equivalent of Kokoro-82M-82M intended to correct an ONNX Runtime WebGPU ConvTranspose issue in the upstream export.
+- Runtime: `kokoro-js` 1.2.1 from jsDelivr.
+- Inference: WebGPU in a dedicated Web Worker; FP32 model weights.
+- Voice: `af_heart` by default. The kokoro-js voice assets remain loaded from the upstream ONNX community model repository.
+- No text is sent to a TTS API. Speech is generated on-device.
+- WebGPU requires a supported browser, GPU adapter, hardware acceleration, and a secure origin (GitHub Pages HTTPS or localhost). This branch intentionally reports an error rather than silently falling back to WASM, so the backend being measured is unambiguous.
+- First use downloads model/runtime assets and compiles GPU shaders. The first generation can therefore be slower than subsequent generations.
+- The worker logs each generation's inference time, audio duration and real-time factor (RTF) in the browser console. RTF below 1.0 means audio was generated faster than it plays; lower is better.
 
-## Kokoro offline TTS
-
-In the reader toolbar, set **Engine → Kokoro (offline)** and start Auto-read. The first run requires an internet connection to download the Kokoro JavaScript runtime and the quantized ONNX model (roughly 90–95 MB, plus tokenizer/voice/runtime assets). Model files are cached by Transformers.js in the browser Cache API; the app shell and runtime modules are cached by the service worker. Later reading can work offline after the first load has completed.
-
-- Default model: `onnx-community/Kokoro-82M-v1.0-ONNX`
-- Runtime: `kokoro-js` 1.2.1, loaded as browser ESM from jsDelivr
-- Inference: WASM with 8-bit quantization (`q8`) in a dedicated Web Worker, keeping synthesis off the reader's UI thread.
-- Default voice: `af_heart`; several English voices are selectable.
-- No text is sent to a TTS API. Speech is generated on the device.
-- Use a secure origin (GitHub Pages HTTPS or localhost). Browser storage may still be cleared or evicted by the browser; offline availability is not permanent if that happens.
-- The first model load can take a while and uses memory. Close other heavy tabs if the browser runs out of memory.
-
-The existing **System** engine remains available as a fallback. Kokoro is lazy-loaded only when selected and Auto-read is started.
+**Important:** This is an experimental comparison branch, not a replacement for the existing WASM branch. Export a backup before testing. The upstream model graph is patched for WebGPU compatibility; audio quality should be listened to and checked before relying on it.
