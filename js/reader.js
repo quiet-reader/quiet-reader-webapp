@@ -2,12 +2,12 @@ import {state} from './state.js';import {put} from './db.js';import {$,esc,toast
 export function chapterHTML(ch){
  const images=new Map((ch.images||[]).map(im=>[im.id,im]));
  return paragraphs(ch.text).map(paragraph=>{
-  const parts=paragraph.split(/(\\[IMAGE:[^\\]]+\\])/g).map(part=>{
-   const match=part.match(/^\\[IMAGE:([^\\]]+)\\]$/);
+  const parts=paragraph.split(/(\[IMAGE:[^\]]+\])/g).map(part=>{
+   const match=part.match(/^\[IMAGE:([^\]]+)\]$/);
    if(match){const im=images.get(match[1]);return im?'<figure><img src="'+im.data+'" alt=""><figcaption class="tiny muted">'+esc(im.caption||'')+'</figcaption></figure>':''}
    return esc(part);
   }).join('');
-  return /^\\[IMAGE:[^\\]]+\\]$/.test(paragraph)?parts:'<p>'+parts+'</p>';
+  return /^\[IMAGE:[^\]]+\]$/.test(paragraph)?parts:'<p>'+parts+'</p>';
  }).join('');
 }
 export function openReader(index){const b=state.book;if(!b?.chapters?.length){toast('Add a chapter first');return}state.chapter=Math.max(0,Math.min(index,b.chapters.length-1));drawReader();setScreen('reader');const saved=b.progress?.chapter===state.chapter?b.progress.offset:0;window.scrollTo(0,saved||0)}
