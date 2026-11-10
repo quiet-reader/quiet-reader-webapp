@@ -69,9 +69,9 @@ export async function loadKokoro(onProgress = () => {}) {
 
 export function kokoroVoices() { return []; }
 
-export async function generateKokoro(text, { voice = DEFAULT_KOKORO_VOICE, onStatus = () => {} } = {}) {
+export async function generateKokoro(text, { voice = DEFAULT_KOKORO_VOICE, speed = 1, onStatus = () => {} } = {}) {
   onStatus('Generating speech with WebGPU…');
-  const audio = await requestWorker('generate', { text, voice }, onStatus);
+  const audio = await requestWorker('generate', { text, voice, speed }, onStatus);
   if (Number.isFinite(audio.inferenceMs) && Number.isFinite(audio.realTimeFactor)) {
     const rtf = audio.realTimeFactor;
     const result = `WebGPU · ${(audio.inferenceMs / 1000).toFixed(2)}s generated / ${audio.audioSeconds.toFixed(2)}s audio · RTF ${rtf.toFixed(2)}`;
@@ -97,8 +97,6 @@ export async function playKokoroAudio(audio, { rate = 1, onStatus = () => {} } =
   buffer.copyToChannel(samples, 0);
   const source = audioContext.createBufferSource();
   source.buffer = buffer;
-  const playbackRate = Math.max(0.65, Math.min(3, rate));
-  source.playbackRate.value = playbackRate;
   source.connect(audioContext.destination);
   activeSources.add(source);
   onStatus('Speaking · Kokoro WebGPU');
