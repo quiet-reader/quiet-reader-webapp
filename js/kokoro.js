@@ -48,14 +48,20 @@ export function kokoroVoices() {
   return Array.isArray(voices) ? voices : [];
 }
 
-export async function playKokoro(text, { voice = DEFAULT_KOKORO_VOICE, rate = 1, onStatus = () => {} } = {}) {
+export async function generateKokoro(text, { voice = DEFAULT_KOKORO_VOICE, onStatus = () => {} } = {}) {
   const tts = await loadKokoro(onStatus);
-  stopKokoro();
   onStatus('Generating speech…');
   const result = await tts.generate(text, { voice });
   const samples = result.audio;
   const sampleRate = result.sampling_rate || 24000;
   if (!samples || !samples.length) throw new Error('Kokoro returned empty audio');
+  return { samples, sampleRate };
+}
+
+export async function playKokoroAudio(audio, { rate = 1, onStatus = () => {} } = {}) {
+  const { samples, sampleRate } = audio || {};
+  if (!samples || !samples.length) throw new Error('Kokoro returned empty audio');
+  stopKokoro();
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) throw new Error('Web Audio is unavailable in this browser');
   audioContext ||= new AudioContextClass();
@@ -83,6 +89,11 @@ export async function playKokoro(text, { voice = DEFAULT_KOKORO_VOICE, rate = 1,
       reject(error);
     }
   });
+}
+
+export async function playKokoro(text, options = {}) {
+  const audio = await generateKokoro(text, options);
+  return playKokoroAudio(audio, options);
 }
 
 export function pauseKokoro() {
