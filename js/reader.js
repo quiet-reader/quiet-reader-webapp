@@ -89,26 +89,30 @@ let kokoroQueueEpoch=0;
 let kokoroQueueWorker=false;
 function clearKokoroQueue(){kokoroQueueEpoch++;kokoroQueue.clear();kokoroQueueWorker=false;stopKokoro()}
 function fillKokoroQueue(){
- if(kokoroQueueWorker||!autoReadRunning||autoReadPaused||$('ttsEngine')?.value!=='kokoro')return;
+ if(!autoReadRunning||autoReadPaused||$('ttsEngine')?.value!=='kokoro')return;
+ const nodes=autoReadNodes();
+ const end=Math.min(nodes.length,autoReadIndex+KOKORO_BUFFER_SIZE);
+ for(let i=autoReadIndex;i<end;i++){
+  if(kokoroQueue.has(i))continue;
+  let resolve,reject;
+  const entry={audio:null,error:null,started:false,promise:new Promise((res,rej)=>{resolve=res;reject=rej})};
+  entry.resolve=resolve;entry.reject=reject;kokoroQueue.set(i,entry);
+ }
+ if(kokoroQueueWorker)return;
  const epoch=kokoroQueueEpoch;kokoroQueueWorker=true;
  (async()=>{
   try{
    while(epoch===kokoroQueueEpoch&&autoReadRunning&&!autoReadPaused){
-    const nodes=autoReadNodes();
-    const end=Math.min(nodes.length,autoReadIndex+KOKORO_BUFFER_SIZE);
-    let next=-1;
-    for(let i=autoReadIndex;i<end;i++)if(!kokoroQueue.has(i)){next=i;break}
-    if(next<0)break;
+    const next=[...kokoroQueue.entries()].find(([index,entry])=>index>=autoReadIndex&&!entry.started)?.[0];
+    if(next==null)break;
+    const entry=kokoroQueue.get(next);entry.started=true;
     const text=(nodes[next]?.innerText||'').trim();
-    if(!text){kokoroQueue.set(next,{audio:null,error:null});continue}
-    let resolve,reject;
-    const entry={audio:null,error:null,started:true,promise:new Promise((res,rej)=>{resolve=res;reject=rej})};
-    entry.resolve=resolve;entry.reject=reject;kokoroQueue.set(next,entry);
+    if(!text){entry.audio=null;entry.resolve(null);continue}
     try{
      const audio=await generateKokoro(text,{voice:$('kokoroVoice')?.value||kokoroVoice,onStatus:message=>{if(next===autoReadIndex)setTTSStatus(message)}});
      if(epoch!==kokoroQueueEpoch)return;
-     entry.audio=audio;resolve(audio);
-    }catch(error){if(epoch!==kokoroQueueEpoch)return;entry.error=error;reject(error)}
+     entry.audio=audio;entry.resolve(audio);
+    }catch(error){if(epoch!==kokoroQueueEpoch)return;entry.error=error;entry.reject(error)}
    }
   }finally{if(epoch===kokoroQueueEpoch)kokoroQueueWorker=false}
  })();
