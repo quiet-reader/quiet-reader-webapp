@@ -55,3 +55,11 @@
 .auto-speed-control input{width:clamp(150px,22vw,260px);height:6px;cursor:pointer;accent-color:#8c70ff}
 .auto-speed-control span{min-width:72px;text-align:right;font-variant-numeric:tabular-nums}
 @media(max-width:650px){.auto-speed-control input{width:clamp(120px,34vw,190px)}}
+
+/* TTS controls */
+.reader-toolbar{flex-wrap:wrap}
+.tts-toggle,.tts-voice-control{display:flex;flex-direction:row;align-items:center;gap:7px;white-space:nowrap;font-size:12px;color:var(--fg)}
+.tts-toggle input{width:16px;height:16px;margin:0;accent-color:#8c70ff}
+.tts-voice-control select{width:auto;max-width:min(260px,28vw);padding:6px 9px;font-size:12px}
+.tts-status{font-size:11px;color:var(--muted);min-width:88px}
+@media(max-width:650px){.tts-voice-control{flex:1 1 180px}.tts-voice-control select{max-width:none;flex:1;min-width:0}.tts-status{flex:1 1 100%;text-align:right}}
