@@ -78,8 +78,29 @@ let autoReadTimer=null;
 let autoReadIndex=0;
 let autoReadRunning=false;
 let autoReadPaused=false;
+let currentUtterance=null;
+let availableVoices=[];
+let voicesReady=false;
 
 function autoReadNodes(){return [...$('readingBody').querySelectorAll('p')]}
+function ttsSupported(){return 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window}
+function selectedVoice(){
+ const id=$('ttsVoice')?.value;
+ return availableVoices.find(v=>v.voiceURI===id)||null;
+}
+function setTTSStatus(message){const el=$('ttsStatus');if(el)el.textContent=message}
+function loadTTSVoices(){
+ if(!ttsSupported()){setTTSStatus('TTS unavailable');$('ttsVoice').innerHTML='<option value="">Not supported by this browser</option>';$('ttsEnabled').checked=false;$('ttsEnabled').disabled=true;return}
+ availableVoices=window.speechSynthesis.getVoices()||[];
+ if(!availableVoices.length){setTTSStatus('Waiting for voices…');return}
+ voicesReady=true;
+ const select=$('ttsVoice'),previous=select.value;
+ const sorted=[...availableVoices].sort((a,b)=>Number(b.localService)-Number(a.localService)||a.name.localeCompare(b.name));
+ select.innerHTML=sorted.map(v=>'<option value="'+esc(v.voiceURI)+'">'+esc(v.name)+' · '+esc(v.lang)+(v.localService?' · Local':' · Device/network')+'</option>').join('');
+ if(sorted.some(v=>v.voiceURI===previous))select.value=previous;
+ else if(sorted.length){const preferred=sorted.find(v=>v.localService)||sorted[0];select.value=preferred.voiceURI}
+ setTTSStatus(sorted.some(v=>v.localService)?'Local voices available':'Using available device voice');
+}
 function updateAutoReadControls(){
  const start=$('autoReadStart'),pause=$('autoReadPause'),stop=$('autoReadStop'),speed=$('autoReadSpeed'),value=$('autoReadSpeedValue');
  if(start){start.textContent=autoReadPaused?'▶ Resume':'▶ Auto-read';start.disabled=autoReadRunning&&!autoReadPaused}
@@ -90,6 +111,14 @@ function updateAutoReadControls(){
 function autoReadCharsPerMinute(position){
  const min=30,max=30000;
  return min*Math.pow(max/min,Math.max(0,Math.min(100,position))/100);
+}
+function ttsRateFromSpeed(position){
+ const p=Math.max(0,Math.min(100,Number(position)||0))/100;
+ return 0.65+2.35*Math.pow(p,1.25);
+}
+function cancelSpeech(){
+ if(ttsSupported())window.speechSynthesis.cancel();
+ currentUtterance=null;
 }
 function highlightAutoReadParagraph(){
  const nodes=autoReadNodes();
@@ -102,13 +131,31 @@ function highlightAutoReadParagraph(){
   window.scrollTo({top:Math.max(0,top),behavior:speed>78?'auto':'smooth'});
  }
 }
+function speakCurrentParagraph(){
+ if(!$('ttsEnabled')?.checked||!ttsSupported()||!voicesReady)return false;
+ const nodes=autoReadNodes(),node=nodes[autoReadIndex];
+ const text=(node?.innerText||'').trim();
+ if(!text)return false;
+ cancelSpeech();
+ const utterance=new SpeechSynthesisUtterance(text);
+ const voice=selectedVoice();
+ if(voice)utterance.voice=voice;
+ utterance.rate=ttsRateFromSpeed($('autoReadSpeed')?.value||55);
+ utterance.onstart=()=>setTTSStatus('Speaking'+(voice?.localService?' · Local':''));
+ utterance.onend=()=>{if(currentUtterance!==utterance)return;currentUtterance=null;if(autoReadRunning&&!autoReadPaused)advanceAutoRead()};
+ utterance.onerror=event=>{if(currentUtterance!==utterance)return;currentUtterance=null;setTTSStatus('Speech error · continuing focus mode');if(autoReadRunning&&!autoReadPaused){const chars=(node.innerText||'').length;const delay=Math.max(800,Math.min(60000,chars/autoReadCharsPerMinute(Number($('autoReadSpeed')?.value||55))*60000));autoReadTimer=setTimeout(advanceAutoRead,delay)}};
+ currentUtterance=utterance;
+ window.speechSynthesis.speak(utterance);
+ return true;
+}
 function scheduleAutoRead(){
  clearTimeout(autoReadTimer);
  if(!autoReadRunning||autoReadPaused)return;
  const nodes=autoReadNodes();
- if(!nodes.length){advanceAutoRead();return}
- if(autoReadIndex>=nodes.length){advanceAutoRead();return}
+ if(!nodes.length||autoReadIndex>=nodes.length){advanceAutoRead();return}
  highlightAutoReadParagraph();
+ if(speakCurrentParagraph())return;
+ setTTSStatus($('ttsEnabled')?.checked?'TTS voice not ready · focus mode active':'Focus mode active · TTS off');
  const speed=Number($('autoReadSpeed')?.value||55);
  const chars=(nodes[autoReadIndex].innerText||'').length;
  const charsPerMinute=autoReadCharsPerMinute(speed);
@@ -117,6 +164,7 @@ function scheduleAutoRead(){
 }
 async function advanceAutoRead(){
  if(!autoReadRunning||autoReadPaused)return;
+ clearTimeout(autoReadTimer);autoReadTimer=null;currentUtterance=null;
  autoReadIndex++;
  const nodes=autoReadNodes();
  if(autoReadIndex>=nodes.length){
@@ -137,7 +185,7 @@ async function advanceAutoRead(){
 export function startAutoRead(){
  if(!state.book?.chapters?.length)return;
  if(!autoReadRunning){autoReadRunning=true;autoReadPaused=false;if(!autoReadNodes().length)autoReadIndex=0}
- else if(autoReadPaused)autoReadPaused=false;
+ else if(autoReadPaused){autoReadPaused=false;if(ttsSupported())window.speechSynthesis.resume()}
  updateAutoReadControls();
  scheduleAutoRead();
 }
@@ -145,20 +193,39 @@ export function pauseAutoRead(){
  if(!autoReadRunning)return;
  autoReadPaused=true;
  clearTimeout(autoReadTimer);
+ if(ttsSupported())window.speechSynthesis.pause();
  updateAutoReadControls();
+ setTTSStatus('Paused');
 }
 export function stopAutoRead(showToast=true){
  clearTimeout(autoReadTimer);
  autoReadTimer=null;
+ cancelSpeech();
  autoReadRunning=false;
  autoReadPaused=false;
  autoReadIndex=0;
  $('readingBody')?.classList.remove('focus-active');
  $('readingBody')?.querySelectorAll('.focus-current').forEach(node=>node.classList.remove('focus-current'));
  updateAutoReadControls();
+ setTTSStatus('Ready');
  if(showToast)toast('Auto-read stopped');
 }
 export function setAutoReadSpeed(){
  updateAutoReadControls();
- if(autoReadRunning&&!autoReadPaused)scheduleAutoRead();
+ if(autoReadRunning&&!autoReadPaused){cancelSpeech();scheduleAutoRead()}
+}
+export function setTTSEnabled(){
+ if(!$('ttsEnabled')?.checked){cancelSpeech();setTTSStatus('TTS off · focus mode remains available')}
+ else{loadTTSVoices();setTTSStatus('TTS enabled');}
+ if(autoReadRunning&&!autoReadPaused){cancelSpeech();scheduleAutoRead()}
+}
+export function setTTSVoice(){
+ if(autoReadRunning&&!autoReadPaused){cancelSpeech();scheduleAutoRead()}
+ else setTTSStatus('Voice selected');
+}
+export function initTTS(){
+ if(!ttsSupported()){loadTTSVoices();return}
+ loadTTSVoices();
+ window.speechSynthesis.addEventListener?.('voiceschanged',loadTTSVoices);
+ window.speechSynthesis.onvoiceschanged=loadTTSVoices;
 }
