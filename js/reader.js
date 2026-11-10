@@ -11,14 +11,16 @@ export function chapterHTML(ch){
   return /^\[IMAGE:[^\]]+\]$/.test(paragraph)?parts:'<p data-paragraph-index="'+paragraphIndex+'">'+parts+'</p>';
  }).join('');
 }
-export function openReader(index){stopAutoRead(false);const b=state.book;if(!b?.chapters?.length){toast('Add a chapter first');return}state.chapter=Math.max(0,Math.min(index,b.chapters.length-1));drawReader();setScreen('reader');const saved=b.progress?.chapter===state.chapter?b.progress.offset:0;window.scrollTo(0,saved||0)}
+export function openReader(index){stopAutoRead(false);novelSearchBookId=null;const b=state.book;if(!b?.chapters?.length){toast('Add a chapter first');return}state.chapter=Math.max(0,Math.min(index,b.chapters.length-1));drawReader();setScreen('reader');const saved=b.progress?.chapter===state.chapter?b.progress.offset:0;window.scrollTo(0,saved||0)}
 export function drawReader(){const b=state.book,c=b.chapters[state.chapter];if(!c)return;$('readerBookTitle').textContent=b.title;$('chapterKicker').textContent='Chapter '+(state.chapter+1)+' of '+b.chapters.length;$('readingTitle').textContent=c.title||'Chapter '+(state.chapter+1);$('readingBody').innerHTML=chapterHTML(c);renderChapterFormat(chapterFormat);$('jumpChapter').innerHTML=b.chapters.map((x,i)=>'<option value="'+i+'">'+esc(x.title||'Chapter '+(i+1))+'</option>').join('');$('jumpChapter').value=state.chapter;$('prevChapter').disabled=state.chapter===0;$('nextChapter').disabled=state.chapter===b.chapters.length-1;$('chapterCounter').textContent=(state.chapter+1)+' / '+b.chapters.length;renderHighlights()}
 export async function saveProgress(){if(!state.book)return;state.book.progress={chapter:state.chapter,offset:window.scrollY};state.book.updated=Date.now();await put(state.book)}
 export async function changeChapter(delta){stopAutoRead();await saveProgress();const next=state.chapter+delta;if(next<0||next>=state.book.chapters.length)return;state.chapter=next;drawReader();window.scrollTo(0,0)}
 export async function jumpChapter(index){stopAutoRead();await saveProgress();state.chapter=Number(index);drawReader();window.scrollTo(0,0)}
-let novelSearchTimer=null;
 let novelSearchBookId=null;
 let novelSearchIndex=[];
+let novelSearchMatches=[];
+let novelSearchQuery='';
+let novelSearchShown=80;
 function buildNovelSearchIndex(){
  novelSearchBookId=state.book?.id||null;
  novelSearchIndex=(state.book?.chapters||[]).map((chapter,chapterIndex)=>({
@@ -32,35 +34,41 @@ function searchSnippet(text,offset,length){
  const start=Math.max(0,offset-58),end=Math.min(text.length,offset+length+82);
  return (start?'…':'')+text.slice(start,end)+(end<text.length?'…':'');
 }
-export function searchNovel(query){
- const input=$('novelSearch'),results=$('novelSearchResults');
- if(!input||!results)return;
- const term=String(query??input.value).trim();
- if(!term){results.innerHTML='<p class="tiny muted">Search across every chapter in this novel.</p>';return}
- if(novelSearchBookId!==state.book?.id)buildNovelSearchIndex();
- const needle=term.toLocaleLowerCase(),matches=[];
- let total=0;
- for(const chapter of novelSearchIndex){
-  let titleAt=chapter.titleLower.indexOf(needle);
-  if(titleAt!==-1){total++;if(matches.length<80)matches.push({chapterIndex:chapter.chapterIndex,paragraphIndex:-1,offset:titleAt,titleMatch:true,snippet:chapter.title})}
-  for(const paragraph of chapter.paragraphs){
-   let at=0;
-   while((at=paragraph.lower.indexOf(needle,at))!==-1){
-    total++;
-    if(matches.length<80)matches.push({chapterIndex:chapter.chapterIndex,paragraphIndex:paragraph.paragraphIndex,offset:at,titleMatch:false,snippet:searchSnippet(paragraph.text,at,term.length)});
-    at+=Math.max(1,needle.length);
-   }
-  }
- }
- if(!total){results.innerHTML='<p class="tiny muted">No matches found.</p>';return}
- results.innerHTML='<p class="tiny muted">'+total.toLocaleString()+' match'+(total===1?'':'es')+(total>matches.length?' · showing first '+matches.length:'')+'</p>'+matches.map((m,i)=>'<button type="button" class="novel-search-result" data-search-result="'+i+'"><b>Chapter '+(m.chapterIndex+1)+' · '+esc(novelSearchIndex[m.chapterIndex].title)+'</b><span>'+esc(m.titleMatch?'Chapter title: '+m.snippet:m.snippet)+'</span></button>').join('');
+function renderNovelSearchResults(){
+ const results=$('novelSearchResults');
+ if(!results)return;
+ if(!novelSearchMatches.length){results.innerHTML='<p class="tiny muted">No matches found.</p>';return}
+ const shown=novelSearchMatches.slice(0,novelSearchShown);
+ results.innerHTML='<p class="tiny muted">'+novelSearchMatches.length.toLocaleString()+' match'+(novelSearchMatches.length===1?'':'es')+(novelSearchMatches.length>shown.length?' · showing '+shown.length:'')+'</p>'+shown.map((m,i)=>'<button type="button" class="novel-search-result" data-search-result="'+i+'"><b>Chapter '+(m.chapterIndex+1)+' · '+esc(novelSearchIndex[m.chapterIndex].title)+'</b><span>'+esc(m.titleMatch?'Chapter title: '+m.snippet:m.snippet)+'</span></button>').join('')+(shown.length<novelSearchMatches.length?'<button type="button" class="novel-search-more" data-search-more>Show more results</button>':'');
  results.querySelectorAll('[data-search-result]').forEach((button,i)=>{
-  const match=matches[i];
+  const match=novelSearchMatches[i];
   button.dataset.searchChapter=match.chapterIndex;
   button.dataset.searchParagraph=match.paragraphIndex;
   button.dataset.searchOffset=match.offset;
   button.dataset.searchTitle=match.titleMatch?'1':'0';
  });
+}
+export function showMoreNovelSearchResults(){novelSearchShown+=80;renderNovelSearchResults()}
+export function searchNovel(query){
+ const input=$('novelSearch'),results=$('novelSearchResults');
+ if(!input||!results)return;
+ const term=String(query??input.value).trim();
+ if(!term){novelSearchMatches=[];novelSearchQuery='';results.innerHTML='<p class="tiny muted">Search across every chapter in this novel.</p>';return}
+ if(novelSearchBookId!==state.book?.id)buildNovelSearchIndex();
+ const needle=term.toLocaleLowerCase();
+ novelSearchMatches=[];novelSearchQuery=term;novelSearchShown=80;
+ for(const chapter of novelSearchIndex){
+  let titleAt=chapter.titleLower.indexOf(needle);
+  if(titleAt!==-1)novelSearchMatches.push({chapterIndex:chapter.chapterIndex,paragraphIndex:-1,offset:titleAt,titleMatch:true,snippet:chapter.title});
+  for(const paragraph of chapter.paragraphs){
+   let at=0;
+   while((at=paragraph.lower.indexOf(needle,at))!==-1){
+    novelSearchMatches.push({chapterIndex:chapter.chapterIndex,paragraphIndex:paragraph.paragraphIndex,offset:at,titleMatch:false,snippet:searchSnippet(paragraph.text,at,term.length)});
+    at+=Math.max(1,needle.length);
+   }
+  }
+ }
+ renderNovelSearchResults();
 }
 function textPointAt(root,offset){
  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
