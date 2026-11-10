@@ -98,7 +98,8 @@ function highlightAutoReadParagraph(){
  const current=nodes[autoReadIndex];
  if(current){
   const top=current.getBoundingClientRect().top+window.scrollY-window.innerHeight*0.34;
-  window.scrollTo({top:Math.max(0,top),behavior:'smooth'});
+  const speed=Number($('autoReadSpeed')?.value||55);
+  window.scrollTo({top:Math.max(0,top),behavior:speed>78?'auto':'smooth'});
  }
 }
 function scheduleAutoRead(){
