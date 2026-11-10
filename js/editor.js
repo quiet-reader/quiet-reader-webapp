@@ -4,22 +4,22 @@ export async function saveChapter(){const c={title:$('editChapterTitle').value.t
 export async function deleteChapter(){if(state.editIndex==null||!confirm('Delete this chapter?'))return;state.book.chapters.splice(state.editIndex,1);await put(state.book);await refresh();drawBook();setScreen('book')}
 export async function insertImage(file){if(!file)return;const data=await dataURL(file),id=uid(),ta=$('editChapterText'),pos=ta.selectionStart;ta.setRangeText('\n[IMAGE:'+id+']\n',pos,ta.selectionEnd,'end');const image={id,data,after:ta.value.slice(0,pos).split(/\n\s*\n/).length};if(state.editIndex==null){state.pendingImages=state.pendingImages||[];state.pendingImages.push(image)}else{state.book.chapters[state.editIndex].images=state.book.chapters[state.editIndex].images||[];state.book.chapters[state.editIndex].images.push(image)}toast('Image inserted at cursor')}
 export async function importTextBook(fileList){
- const files=[...fileList].filter(f=>/\\.txt$/i.test(f.name));
+ const files=[...fileList].filter(f=>/\.txt$/i.test(f.name));
  if(!files.length)return toast('No .txt files found');
  const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
  files.sort((a,b)=>collator.compare(a.webkitRelativePath||a.name,b.webkitRelativePath||b.name));
  const imported=[];
  for(const file of files){
-  const text=(await file.text()).replace(/^\\uFEFF/,'').replace(/\\r\\n?/g,'\\n').trim();
+  const text=(await file.text()).replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').trim();
   if(!text)continue;
   const relative=file.webkitRelativePath||file.name;
-  const base=relative.split('/').pop().replace(/\\.txt$/i,'');
+  const base=relative.split('/').pop().replace(/\.txt$/i,'');
   imported.push({title:base||'Untitled chapter',text,images:[]});
  }
  if(!imported.length)return toast('The selected text files are empty');
  const firstPath=files[0].webkitRelativePath||'';
  const folderName=firstPath.includes('/')?firstPath.split('/')[0]:'';
- const novelTitle=folderName||imported[0].title.replace(/\\s*[-_]?(chapter|ch|part)\\s*\\d+.*$/i,'').trim()||imported[0].title;
+ const novelTitle=folderName||imported[0].title.replace(/\s*[-_]?(chapter|ch|part)\s*\d+.*$/i,'').trim()||imported[0].title;
  const book=freshBook('manual',novelTitle);
  book.chapters=imported;
  book.updated=Date.now();
