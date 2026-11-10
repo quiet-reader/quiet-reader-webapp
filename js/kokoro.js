@@ -29,7 +29,11 @@ function getWorker(onProgress = () => {}) {
           else if (message.type === 'loaded') request.resolve(instance);
           else if (message.type === 'audio') request.resolve({
             samples: new Float32Array(message.samples),
-            sampleRate: message.sampleRate || 24000
+            sampleRate: message.sampleRate || 24000,
+            inferenceMs: message.inferenceMs,
+            audioSeconds: message.audioSeconds,
+            realTimeFactor: message.realTimeFactor,
+            backend: message.backend || 'wasm'
           });
         };
         instance.onerror = event => {
@@ -68,7 +72,13 @@ export function kokoroVoices() { return []; }
 
 export async function generateKokoro(text, { voice = DEFAULT_KOKORO_VOICE, onStatus = () => {} } = {}) {
   onStatus('Generating speech in background…');
-  return requestWorker('generate', { text, voice }, onStatus);
+  const audio = await requestWorker('generate', { text, voice }, onStatus);
+  if (Number.isFinite(audio.inferenceMs) && Number.isFinite(audio.realTimeFactor)) {
+    const rtf = audio.realTimeFactor;
+    onStatus(`WASM · ${(audio.inferenceMs / 1000).toFixed(2)}s generated / ${audio.audioSeconds.toFixed(2)}s audio · RTF ${rtf.toFixed(2)}`);
+    console.info('[Quiet Reader TTS benchmark]', { backend: audio.backend, inferenceSeconds: audio.inferenceMs / 1000, audioSeconds: audio.audioSeconds, realTimeFactor: rtf });
+  }
+  return audio;
 }
 
 export async function playKokoroAudio(audio, { rate = 1, onStatus = () => {} } = {}) {
