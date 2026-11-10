@@ -128,7 +128,7 @@ function fillKokoroQueue(){
     const text=kokoroSentenceUnits[next]?.text||'';
     if(!text){entry.audio=null;entry.resolve(null);continue}
     try{
-     const audio=await generateKokoro(text,{voice:$('kokoroVoice')?.value||kokoroVoice,onStatus:message=>{if(next===kokoroSentenceIndex)setTTSStatus(message)}});
+     const audio=await generateKokoro(text,{voice:$('kokoroVoice')?.value||kokoroVoice,speed:ttsSpeechRate(),onStatus:message=>{if(next===kokoroSentenceIndex)setTTSStatus(message)}});
      if(epoch!==kokoroQueueEpoch)return;
      entry.audio=audio;entry.resolve(audio);
     }catch(error){if(epoch!==kokoroQueueEpoch)return;entry.error=error;entry.reject(error)}
@@ -172,10 +172,7 @@ function autoReadCharsPerMinute(position){
  const min=30,max=30000;
  return min*Math.pow(max/min,Math.max(0,Math.min(100,position))/100);
 }
-function ttsRateFromSpeed(position){
- const p=Math.max(0,Math.min(100,Number(position)||0))/100;
- return 0.65+2.35*Math.pow(p,1.25);
-}
+function ttsSpeechRate(){return Number($('ttsSpeechSpeed')?.value||1)}
 function cancelSpeech(){
  clearKokoroQueue();
  if(ttsSupported())window.speechSynthesis.cancel();
@@ -207,7 +204,7 @@ function speakCurrentParagraph(){
  const utterance=new SpeechSynthesisUtterance(text);
  const voice=selectedVoice();
  if(voice)utterance.voice=voice;
- utterance.rate=ttsRateFromSpeed($('autoReadSpeed')?.value||55);
+ utterance.rate=ttsSpeechRate();
  utterance.onstart=()=>setTTSStatus('Speaking'+(voice?.localService?' · Local':''));
  utterance.onend=()=>{if(currentUtterance!==utterance)return;currentUtterance=null;if(autoReadRunning&&!autoReadPaused)advanceAutoRead()};
  utterance.onerror=event=>{if(currentUtterance!==utterance)return;currentUtterance=null;setTTSStatus('Speech error · continuing focus mode');if(autoReadRunning&&!autoReadPaused){const chars=(node.innerText||'').length;const delay=Math.max(800,Math.min(60000,chars/autoReadCharsPerMinute(Number($('autoReadSpeed')?.value||55))*60000));autoReadTimer=setTimeout(advanceAutoRead,delay)}};
@@ -224,12 +221,11 @@ function speakCurrentKokoroSentence(){
  const marker={kokoro:true,playing:false,sentenceIndex:kokoroSentenceIndex};
  currentUtterance=marker;
  fillKokoroQueue();
- const rate=ttsRateFromSpeed($('autoReadSpeed')?.value||55);
  queuedKokoroAudio(kokoroSentenceIndex).then(audio=>{
   if(currentUtterance!==marker||!autoReadRunning||autoReadPaused)return;
   if(!audio)throw new Error('No buffered audio for this sentence');
   marker.playing=true;
-  playKokoroAudio(audio,{rate,onStatus:setTTSStatus}).then(()=>{
+  playKokoroAudio(audio,{onStatus:setTTSStatus}).then(()=>{
    if(currentUtterance!==marker)return;
    currentUtterance=null;
    if(autoReadRunning&&!autoReadPaused){
@@ -339,12 +335,14 @@ export function stopAutoRead(showToast=true){
  setTTSStatus('Ready');
  if(showToast)toast('Auto-read stopped');
 }
-export function setAutoReadSpeed(){
- updateAutoReadControls();
- if(autoReadRunning&&!autoReadPaused){clearKokoroQueue();cancelSpeech();scheduleAutoRead()}
+export function setAutoReadSpeed(){updateAutoReadControls()}
+export function setTTSSpeechSpeed(){
+ if(autoReadRunning&&!autoReadPaused){cancelSpeech();scheduleAutoRead()}
 }
 export function setTTSEnabled(){
- if(!$('ttsEnabled')?.checked){cancelSpeech();setTTSStatus('TTS off · focus mode remains available')}
+ const enabled=$('ttsEnabled')?.checked;
+ $('ttsSpeechSpeedControl')?.classList.toggle('hidden',!enabled);
+ if(!enabled){cancelSpeech();setTTSStatus('TTS off · focus mode remains available')}
  else{loadTTSVoices();setTTSStatus('TTS enabled');}
  if(autoReadRunning&&!autoReadPaused){cancelSpeech();scheduleAutoRead()}
 }
