@@ -1,77 +1,85 @@
-// Kokoro browser-local TTS. Model files are downloaded from Hugging Face
-// on first use and cached by Transformers.js in the browser Cache API.
-const MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
-const MODULE_URL = 'https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm';
-let enginePromise = null;
-let engine = null;
+// Main-thread audio playback + worker bridge for browser-local Kokoro TTS.
+// Inference runs in a dedicated worker so WASM cannot freeze the reader UI.
+let worker = null;
+let workerReady = null;
+let nextRequestId = 1;
+const pending = new Map();
 let audioContext = null;
 let activeSource = null;
 let activeResolve = null;
 let playbackPaused = false;
-let generationChain = Promise.resolve();
 
 export const DEFAULT_KOKORO_VOICE = 'af_heart';
 
-export async function loadKokoro(onProgress = () => {}) {
-  if (engine) return engine;
-  if (!enginePromise) {
-    enginePromise = (async () => {
-      if ('serviceWorker' in navigator && location.protocol !== 'file:') await navigator.serviceWorker.ready.catch(() => {});
-      onProgress('Loading Kokoro runtime…');
-      const { KokoroTTS } = await import(MODULE_URL);
-      onProgress('Downloading / loading Kokoro model (about 90 MB)…');
-      const model = await KokoroTTS.from_pretrained(MODEL_ID, {
-        dtype: 'q8',
-        device: 'wasm',
-        progress_callback: (progress) => {
-          if (progress?.status === 'progress') {
-            const pct = progress.total ? Math.round(progress.loaded / progress.total * 100) : null;
-            onProgress(pct == null ? 'Downloading model…' : 'Downloading model… ' + pct + '%');
-          } else if (progress?.status === 'done') {
-            onProgress('Model file ready…');
-          }
-        }
-      });
-      engine = model;
-      onProgress('Kokoro ready · cached on this device');
-      return engine;
-    })().catch(error => {
-      enginePromise = null;
-      throw error;
+function getWorker(onProgress = () => {}) {
+  if (worker) return Promise.resolve(worker);
+  if (!workerReady) {
+    workerReady = new Promise((resolve, reject) => {
+      try {
+        const instance = new Worker(new URL('./kokoro-worker.js', import.meta.url), { type: 'module' });
+        worker = instance;
+        instance.onmessage = event => {
+          const message = event.data || {};
+          if (message.type === 'status') { onProgress(message.message); return; }
+          if (message.type === 'ready') { onProgress('Kokoro ready · running in background'); return; }
+          const request = pending.get(message.id);
+          if (!request) return;
+          pending.delete(message.id);
+          if (message.type === 'error') request.reject(new Error(message.message || 'Kokoro worker failed'));
+          else if (message.type === 'loaded') request.resolve(instance);
+          else if (message.type === 'audio') request.resolve({
+            samples: new Float32Array(message.samples),
+            sampleRate: message.sampleRate || 24000
+          });
+        };
+        instance.onerror = event => {
+          const error = new Error(event.message || 'Kokoro worker stopped unexpectedly');
+          for (const request of pending.values()) request.reject(error);
+          pending.clear();
+          worker = null;
+          workerReady = null;
+          reject(error);
+        };
+        resolve(instance);
+      } catch (error) {
+        workerReady = null;
+        reject(error);
+      }
     });
   }
-  return enginePromise;
+  return workerReady;
 }
 
-export function kokoroVoices() {
-  if (!engine) return [];
-  const voices = engine.list_voices();
-  return Array.isArray(voices) ? voices : [];
+function requestWorker(type, payload = {}, onProgress = () => {}) {
+  return getWorker(onProgress).then(instance => new Promise((resolve, reject) => {
+    const id = nextRequestId++;
+    pending.set(id, { resolve, reject });
+    instance.postMessage({ type, id, ...payload });
+  }));
 }
+
+export async function loadKokoro(onProgress = () => {}) {
+  await requestWorker('load', {}, onProgress);
+  onProgress('Kokoro ready · cached on this device');
+  return true;
+}
+
+export function kokoroVoices() { return []; }
 
 export async function generateKokoro(text, { voice = DEFAULT_KOKORO_VOICE, onStatus = () => {} } = {}) {
-  const task = generationChain.then(async () => {
-    const tts = await loadKokoro(onStatus);
-    onStatus('Generating speech…');
-    const result = await tts.generate(text, { voice });
-  const samples = result.audio;
-  const sampleRate = result.sampling_rate || 24000;
-  if (!samples || !samples.length) throw new Error('Kokoro returned empty audio');
-    return { samples, sampleRate };
-  });
-  generationChain = task.catch(() => {});
-  return task;
+  onStatus('Generating speech in background…');
+  return requestWorker('generate', { text, voice }, onStatus);
 }
 
 export async function playKokoroAudio(audio, { rate = 1, onStatus = () => {} } = {}) {
   const { samples, sampleRate } = audio || {};
-  if (!samples || !samples.length) throw new Error('Kokoro returned empty audio');
+  if (!samples?.length) throw new Error('Kokoro returned empty audio');
   stopKokoro();
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) throw new Error('Web Audio is unavailable in this browser');
   audioContext ||= new AudioContextClass();
   if (audioContext.state === 'suspended' && !playbackPaused) await audioContext.resume();
-  const buffer = audioContext.createBuffer(1, samples.length, sampleRate);
+  const buffer = audioContext.createBuffer(1, samples.length, sampleRate || 24000);
   buffer.copyToChannel(samples, 0);
   const source = audioContext.createBufferSource();
   source.buffer = buffer;
