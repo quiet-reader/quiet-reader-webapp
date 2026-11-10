@@ -1,4 +1,5 @@
 import {state} from './state.js';import {put} from './db.js';import {$,esc,toast,paragraphs} from './utils.js';import {setScreen} from './state.js';import {renderHighlights} from './highlights.js';
+import {loadKokoro,playKokoro,pauseKokoro,resumeKokoro,stopKokoro,DEFAULT_KOKORO_VOICE} from './kokoro.js';
 export function chapterHTML(ch){
  const images=new Map((ch.images||[]).map(im=>[im.id,im]));
  return paragraphs(ch.text).map(paragraph=>{
@@ -81,6 +82,7 @@ let autoReadPaused=false;
 let currentUtterance=null;
 let availableVoices=[];
 let voicesReady=false;
+let kokoroVoice='af_heart';
 
 function autoReadNodes(){return [...$('readingBody').querySelectorAll('p')]}
 function ttsSupported(){return 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window}
@@ -118,6 +120,7 @@ function ttsRateFromSpeed(position){
 }
 function cancelSpeech(){
  if(ttsSupported())window.speechSynthesis.cancel();
+ stopKokoro();
  currentUtterance=null;
 }
 function highlightAutoReadParagraph(){
@@ -132,7 +135,25 @@ function highlightAutoReadParagraph(){
  }
 }
 function speakCurrentParagraph(){
- if(!$('ttsEnabled')?.checked||!ttsSupported()||!voicesReady)return false;
+ if(!$('ttsEnabled')?.checked)return false;
+ if($('ttsEngine')?.value==='kokoro'){
+  const nodes=autoReadNodes(),node=nodes[autoReadIndex],text=(node?.innerText||'').trim();
+  if(!text)return false;
+  const marker={kokoro:true};currentUtterance=marker;
+  const rate=ttsRateFromSpeed($('autoReadSpeed')?.value||55);
+  playKokoro(text,{voice:$('kokoroVoice')?.value||kokoroVoice,rate,onStatus:setTTSStatus}).then(()=>{
+   if(currentUtterance!==marker)return;
+   currentUtterance=null;
+   if(autoReadRunning&&!autoReadPaused)advanceAutoRead();
+  }).catch(error=>{
+   if(currentUtterance!==marker)return;
+   currentUtterance=null;
+   setTTSStatus('Kokoro error · '+(error?.message||'unknown error'));
+   if(autoReadRunning&&!autoReadPaused){const delay=Math.max(800,Math.min(60000,text.length/autoReadCharsPerMinute(Number($('autoReadSpeed')?.value||55))*60000));autoReadTimer=setTimeout(advanceAutoRead,delay)}
+  });
+  return true;
+ }
+ if(!ttsSupported()||!voicesReady)return false;
  const nodes=autoReadNodes(),node=nodes[autoReadIndex];
  const text=(node?.innerText||'').trim();
  if(!text)return false;
@@ -182,10 +203,14 @@ async function advanceAutoRead(){
  }
  scheduleAutoRead();
 }
-export function startAutoRead(){
+export async function startAutoRead(){
  if(!state.book?.chapters?.length)return;
+ if($('ttsEnabled')?.checked&&$('ttsEngine')?.value==='kokoro'){
+  try{await loadKokoro(message=>setTTSStatus(message));populateKokoroVoices();}
+  catch(error){setTTSStatus('Kokoro load failed · '+(error?.message||'check connection'));toast('Could not load Kokoro. Check your connection and try again.');return}
+ }
  if(!autoReadRunning){autoReadRunning=true;autoReadPaused=false;if(!autoReadNodes().length)autoReadIndex=0}
- else if(autoReadPaused){autoReadPaused=false;if(ttsSupported()&&currentUtterance){window.speechSynthesis.resume();updateAutoReadControls();return}}
+ else if(autoReadPaused){autoReadPaused=false;if(currentUtterance?.kokoro){resumeKokoro();updateAutoReadControls();return}if(ttsSupported()&&currentUtterance){window.speechSynthesis.resume();updateAutoReadControls();return}}
  updateAutoReadControls();
  scheduleAutoRead();
 }
@@ -194,6 +219,7 @@ export function pauseAutoRead(){
  autoReadPaused=true;
  clearTimeout(autoReadTimer);
  if(ttsSupported())window.speechSynthesis.pause();
+ pauseKokoro();
  updateAutoReadControls();
  setTTSStatus('Paused');
 }
@@ -222,6 +248,20 @@ export function setTTSEnabled(){
 export function setTTSVoice(){
  if(autoReadRunning&&!autoReadPaused){cancelSpeech();scheduleAutoRead()}
  else setTTSStatus('Voice selected');
+}
+function populateKokoroVoices(){
+ const select=$('kokoroVoice');if(!select)return;
+ const voices=['af_heart','af_bella','af_nova','af_sarah','af_sky','af_nicole','af_kore','af_alloy','am_adam','am_michael','am_fenrir','am_puck','bf_emma','bf_isabella','bf_alice','bm_george','bm_fable','bm_daniel'];
+ const previous=select.value||kokoroVoice;
+ select.innerHTML=voices.map(v=>'<option value="'+v+'">'+v.replaceAll('_',' ')+'</option>').join('');
+ select.value=voices.includes(previous)?previous:DEFAULT_KOKORO_VOICE;
+}
+export function setTTSEngine(){
+ const kokoro=$('ttsEngine')?.value==='kokoro';
+ $('ttsVoice')?.classList.toggle('hidden',kokoro);
+ $('kokoroVoice')?.classList.toggle('hidden',!kokoro);
+ setTTSStatus(kokoro?'Kokoro · loads on first Auto-read':'System voice selected');
+ if(autoReadRunning&&!autoReadPaused){cancelSpeech();scheduleAutoRead()}
 }
 export function initTTS(){
  if(!ttsSupported()){loadTTSVoices();return}
