@@ -31,3 +31,22 @@
 
 .library-actions{justify-content:flex-end;flex-wrap:wrap}.library-actions button{white-space:nowrap}
 @media(max-width:650px){.library-actions{width:100%;justify-content:flex-start}.library-actions button{flex:1 1 auto}}
+
+
+/* Book tags and library filtering */
+.tag-filter-label{display:flex;flex-direction:row;align-items:center;gap:8px;margin-left:auto;white-space:nowrap}
+.tag-filter-label select{width:auto;min-width:150px}
+.book-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.book-tag{font-size:10px;border:1px solid var(--line);border-radius:20px;padding:2px 7px;color:var(--muted)}
+/* Visual auto-read focus */
+.auto-speed-control{display:flex;flex-direction:row;align-items:center;gap:5px;font-size:11px;white-space:nowrap}
+.auto-speed-control input{width:90px;padding:0;accent-color:var(--accent)}
+.reading-body.focus-active p{opacity:.14;transition:opacity .25s ease}
+.reading-body.focus-active p.focus-current{opacity:1;background:#ffffff0b;border-left:3px solid var(--accent);padding:8px 12px;margin-left:-15px;border-radius:3px}
+@media(max-width:650px){
+ .tag-filter-label{width:100%;margin:4px 0 0}
+ .tag-filter-label select{flex:1}
+ .reader-toolbar{flex-wrap:wrap}
+ .auto-speed-control{margin-left:auto}
+ .auto-speed-control input{width:76px}
+}
