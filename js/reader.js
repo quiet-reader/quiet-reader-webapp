@@ -10,11 +10,11 @@ export function chapterHTML(ch){
   return /^\[IMAGE:[^\]]+\]$/.test(paragraph)?parts:'<p>'+parts+'</p>';
  }).join('');
 }
-export function openReader(index){const b=state.book;if(!b?.chapters?.length){toast('Add a chapter first');return}state.chapter=Math.max(0,Math.min(index,b.chapters.length-1));drawReader();setScreen('reader');const saved=b.progress?.chapter===state.chapter?b.progress.offset:0;window.scrollTo(0,saved||0)}
+export function openReader(index){stopAutoRead(false);const b=state.book;if(!b?.chapters?.length){toast('Add a chapter first');return}state.chapter=Math.max(0,Math.min(index,b.chapters.length-1));drawReader();setScreen('reader');const saved=b.progress?.chapter===state.chapter?b.progress.offset:0;window.scrollTo(0,saved||0)}
 export function drawReader(){const b=state.book,c=b.chapters[state.chapter];if(!c)return;$('readerBookTitle').textContent=b.title;$('chapterKicker').textContent='Chapter '+(state.chapter+1)+' of '+b.chapters.length;$('readingTitle').textContent=c.title||'Chapter '+(state.chapter+1);$('readingBody').innerHTML=chapterHTML(c);renderChapterFormat(chapterFormat);$('jumpChapter').innerHTML=b.chapters.map((x,i)=>'<option value="'+i+'">'+esc(x.title||'Chapter '+(i+1))+'</option>').join('');$('jumpChapter').value=state.chapter;$('prevChapter').disabled=state.chapter===0;$('nextChapter').disabled=state.chapter===b.chapters.length-1;$('chapterCounter').textContent=(state.chapter+1)+' / '+b.chapters.length;renderHighlights()}
 export async function saveProgress(){if(!state.book)return;state.book.progress={chapter:state.chapter,offset:window.scrollY};state.book.updated=Date.now();await put(state.book)}
-export async function changeChapter(delta){await saveProgress();const next=state.chapter+delta;if(next<0||next>=state.book.chapters.length)return;state.chapter=next;drawReader();window.scrollTo(0,0)}
-export async function jumpChapter(index){await saveProgress();state.chapter=Number(index);drawReader();window.scrollTo(0,0)}
+export async function changeChapter(delta){stopAutoRead();await saveProgress();const next=state.chapter+delta;if(next<0||next>=state.book.chapters.length)return;state.chapter=next;drawReader();window.scrollTo(0,0)}
+export async function jumpChapter(index){stopAutoRead();await saveProgress();state.chapter=Number(index);drawReader();window.scrollTo(0,0)}
 export function addBookmark(){const b=state.book;b.bookmarks=b.bookmarks||[];b.bookmarks.push({id:crypto.randomUUID?.()||String(Date.now()),chapter:state.chapter,offset:window.scrollY,text:$('readingTitle').textContent,created:Date.now()});put(b).then(()=>toast('Bookmark saved'))}
 let chapterFormat='normal';
 let sectionParts=[];
@@ -70,4 +70,90 @@ export function toggleSection(index,button){
  if(!content)return;
  content.classList.toggle('hidden');
  button.textContent=content.classList.contains('hidden')?'Expand':'Collapse';
+}
+
+
+
+let autoReadTimer=null;
+let autoReadIndex=0;
+let autoReadRunning=false;
+let autoReadPaused=false;
+
+function autoReadNodes(){return [...$('readingBody').querySelectorAll('p')]}
+function updateAutoReadControls(){
+ const start=$('autoReadStart'),pause=$('autoReadPause'),stop=$('autoReadStop'),speed=$('autoReadSpeed'),value=$('autoReadSpeedValue');
+ if(start){start.textContent=autoReadPaused?'▶ Resume':'▶ Auto-read';start.disabled=autoReadRunning&&!autoReadPaused}
+ if(pause)pause.disabled=!autoReadRunning||autoReadPaused;
+ if(stop)stop.disabled=!autoReadRunning&&!autoReadPaused;
+ if(speed&&value)value.textContent=speed.value;
+}
+function highlightAutoReadParagraph(){
+ const nodes=autoReadNodes();
+ nodes.forEach((node,i)=>node.classList.toggle('focus-current',i===autoReadIndex));
+ $('readingBody').classList.add('focus-active');
+ const current=nodes[autoReadIndex];
+ if(current){
+  const top=current.getBoundingClientRect().top+window.scrollY-window.innerHeight*0.34;
+  window.scrollTo({top:Math.max(0,top),behavior:'smooth'});
+ }
+}
+function scheduleAutoRead(){
+ clearTimeout(autoReadTimer);
+ if(!autoReadRunning||autoReadPaused)return;
+ const nodes=autoReadNodes();
+ if(!nodes.length){advanceAutoRead();return}
+ if(autoReadIndex>=nodes.length){advanceAutoRead();return}
+ highlightAutoReadParagraph();
+ const speed=Number($('autoReadSpeed')?.value||5);
+ const chars=(nodes[autoReadIndex].innerText||'').length;
+ const charsPerMinute=100+(speed-1)*180;
+ const delay=Math.max(1200,Math.min(60000,chars/charsPerMinute*60000));
+ autoReadTimer=setTimeout(advanceAutoRead,delay);
+}
+async function advanceAutoRead(){
+ if(!autoReadRunning||autoReadPaused)return;
+ autoReadIndex++;
+ const nodes=autoReadNodes();
+ if(autoReadIndex>=nodes.length){
+  if(state.chapter<state.book.chapters.length-1){
+   await saveProgress();
+   state.chapter++;
+   autoReadIndex=0;
+   drawReader();
+   window.scrollTo({top:0,behavior:'instant'});
+  }else{
+   stopAutoRead();
+   toast('Reached the end of the novel');
+   return;
+  }
+ }
+ scheduleAutoRead();
+}
+export function startAutoRead(){
+ if(!state.book?.chapters?.length)return;
+ if(!autoReadRunning){autoReadRunning=true;autoReadPaused=false;if(!autoReadNodes().length)autoReadIndex=0}
+ else if(autoReadPaused)autoReadPaused=false;
+ updateAutoReadControls();
+ scheduleAutoRead();
+}
+export function pauseAutoRead(){
+ if(!autoReadRunning)return;
+ autoReadPaused=true;
+ clearTimeout(autoReadTimer);
+ updateAutoReadControls();
+}
+export function stopAutoRead(showToast=true){
+ clearTimeout(autoReadTimer);
+ autoReadTimer=null;
+ autoReadRunning=false;
+ autoReadPaused=false;
+ autoReadIndex=0;
+ $('readingBody')?.classList.remove('focus-active');
+ $('readingBody')?.querySelectorAll('.focus-current').forEach(node=>node.classList.remove('focus-current'));
+ updateAutoReadControls();
+ if(showToast)toast('Auto-read stopped');
+}
+export function setAutoReadSpeed(){
+ updateAutoReadControls();
+ if(autoReadRunning&&!autoReadPaused)scheduleAutoRead();
 }
