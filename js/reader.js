@@ -180,12 +180,14 @@ function speakCurrentParagraph(){
  if($('ttsEngine')?.value==='kokoro'){
   const nodes=autoReadNodes(),node=nodes[autoReadIndex],text=(node?.innerText||'').trim();
   if(!text)return false;
-  const marker={kokoro:true};currentUtterance=marker;
+  const marker={kokoro:true,playing:false};currentUtterance=marker;
   fillKokoroQueue();
   const rate=ttsRateFromSpeed($('autoReadSpeed')?.value||55);
   queuedKokoroAudio(autoReadIndex).then(audio=>{
    if(currentUtterance!==marker||!autoReadRunning||autoReadPaused)return;
    if(!audio)throw new Error('No buffered audio for this paragraph');
+   if(autoReadPaused)return;
+   marker.playing=true;
    playKokoroAudio(audio,{rate,onStatus:setTTSStatus}).then(()=>{
     if(currentUtterance!==marker)return;
     currentUtterance=null;
@@ -261,7 +263,7 @@ export async function startAutoRead(){
   catch(error){setTTSStatus('Kokoro load failed · '+(error?.message||'check connection'));toast('Could not load Kokoro. Check your connection and try again.');return}
  }
  if(!autoReadRunning){autoReadRunning=true;autoReadPaused=false;if(!autoReadNodes().length)autoReadIndex=0}
- else if(autoReadPaused){autoReadPaused=false;if(currentUtterance?.kokoro){resumeKokoro();fillKokoroQueue();updateAutoReadControls();return}if(ttsSupported()&&currentUtterance){window.speechSynthesis.resume();updateAutoReadControls();return}}
+ else if(autoReadPaused){autoReadPaused=false;if(currentUtterance?.kokoro&&currentUtterance.playing){resumeKokoro();fillKokoroQueue();updateAutoReadControls();return}if(currentUtterance?.kokoro)currentUtterance=null;if(ttsSupported()&&currentUtterance){window.speechSynthesis.resume();updateAutoReadControls();return}}
  updateAutoReadControls();
  scheduleAutoRead();
 }
