@@ -48,6 +48,7 @@ In the reader toolbar, set **Engine → Kokoro (offline)** and start Auto-read. 
 - Default model: `onnx-community/Kokoro-82M-v1.0-ONNX`
 - Runtime: `kokoro-js` 1.2.1, loaded as browser ESM from jsDelivr
 - Inference: WASM with 8-bit quantization (`q8`) in a dedicated Web Worker, keeping synthesis off the reader's UI thread.
+- Benchmarking: each generated paragraph logs inference time, generated audio duration and real-time factor (RTF) in the browser console. RTF below 1.0 means generation is faster than playback; lower is better. The same measurement is included on the `kokoro-webgpu-test` branch for an apples-to-apples comparison.
 - Default voice: `af_heart`; several English voices are selectable.
 - No text is sent to a TTS API. Speech is generated on the device.
 - Use a secure origin (GitHub Pages HTTPS or localhost). Browser storage may still be cleared or evicted by the browser; offline availability is not permanent if that happens.
