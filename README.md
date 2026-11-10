@@ -36,3 +36,9 @@ This branch changes the experimental Kokoro engine from q8/WASM to WebGPU/FP32 s
 - The worker logs each generation's inference time, audio duration and real-time factor (RTF) in the browser console. RTF below 1.0 means audio was generated faster than it plays; lower is better.
 
 **Important:** This is an experimental comparison branch, not a replacement for the existing WASM branch. Export a backup before testing. The upstream model graph is patched for WebGPU compatibility; audio quality should be listened to and checked before relying on it.
+
+## Sentence-streaming Kokoro playback
+
+The WebGPU test branch now splits reader paragraphs into individual sentences. It starts synthesis for the current sentence and keeps a rolling look-ahead queue of up to 10 sentences. As each sentence finishes, the next ready sentence is played; synthesis continues in the worker while audio is playing. Paragraph highlighting remains synchronized to the paragraph containing the active sentence.
+
+This is sentence-level incremental playback, not token-by-token waveform streaming: each sentence must finish synthesis before that sentence can play. If the GPU cannot synthesize sentences faster than real-time, occasional waits can still occur. The worker's inference-time / audio-duration RTF logs remain available for measuring this.
