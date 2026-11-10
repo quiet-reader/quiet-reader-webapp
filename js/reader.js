@@ -91,7 +91,7 @@ function clearKokoroQueue(){kokoroQueueEpoch++;kokoroQueue.clear();kokoroQueueWo
 function fillKokoroQueue(){
  if(!autoReadRunning||autoReadPaused||$('ttsEngine')?.value!=='kokoro')return;
  const nodes=autoReadNodes();
- const end=Math.min(nodes.length,autoReadIndex+KOKORO_BUFFER_SIZE);
+ const end=Math.min(nodes.length,autoReadIndex+KOKORO_BUFFER_SIZE+1);
  for(let i=autoReadIndex;i<end;i++){
   if(kokoroQueue.has(i))continue;
   let resolve,reject;
