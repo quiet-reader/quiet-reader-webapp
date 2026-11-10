@@ -1,5 +1,5 @@
-const SHELL_CACHE='quiet-reader-shell-v4';
-const RUNTIME_CACHE='quiet-reader-runtime-v2';
+const SHELL_CACHE='quiet-reader-shell-v5';
+const RUNTIME_CACHE='quiet-reader-runtime-v3';
 const SHELL=['./','./index.html','./css/main.css','./js/app.js','./js/reader.js','./js/kokoro.js','./js/kokoro-worker.js','./js/state.js','./js/db.js','./js/utils.js','./js/themes.js','./js/library.js','./js/editor.js','./js/highlights.js','./js/backup.js','./js/epub.js','./js/pdf.js','./assets/favicon.svg'];
 const RUNTIME_HOSTS=['esm.sh','cdn.jsdelivr.net'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(SHELL_CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
