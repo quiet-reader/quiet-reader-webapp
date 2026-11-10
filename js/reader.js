@@ -1,5 +1,5 @@
 import {state} from './state.js';import {put} from './db.js';import {$,esc,toast,paragraphs} from './utils.js';import {setScreen} from './state.js';import {renderHighlights} from './highlights.js';
-import {loadKokoro,playKokoro,pauseKokoro,resumeKokoro,stopKokoro,DEFAULT_KOKORO_VOICE} from './kokoro.js';
+import {loadKokoro,generateKokoro,playKokoroAudio,pauseKokoro,resumeKokoro,stopKokoro,DEFAULT_KOKORO_VOICE} from './kokoro.js';
 export function chapterHTML(ch){
  const images=new Map((ch.images||[]).map(im=>[im.id,im]));
  return paragraphs(ch.text).map(paragraph=>{
@@ -83,6 +83,42 @@ let currentUtterance=null;
 let availableVoices=[];
 let voicesReady=false;
 let kokoroVoice='af_heart';
+const KOKORO_BUFFER_SIZE=10;
+let kokoroQueue=new Map();
+let kokoroQueueEpoch=0;
+let kokoroQueueWorker=false;
+function clearKokoroQueue(){kokoroQueueEpoch++;kokoroQueue.clear();kokoroQueueWorker=false;stopKokoro()}
+function fillKokoroQueue(){
+ if(kokoroQueueWorker||!autoReadRunning||autoReadPaused||$('ttsEngine')?.value!=='kokoro')return;
+ const epoch=kokoroQueueEpoch;kokoroQueueWorker=true;
+ (async()=>{
+  try{
+   while(epoch===kokoroQueueEpoch&&autoReadRunning&&!autoReadPaused){
+    const nodes=autoReadNodes();
+    const end=Math.min(nodes.length,autoReadIndex+KOKORO_BUFFER_SIZE);
+    let next=-1;
+    for(let i=autoReadIndex;i<end;i++)if(!kokoroQueue.has(i)){next=i;break}
+    if(next<0)break;
+    const text=(nodes[next]?.innerText||'').trim();
+    if(!text){kokoroQueue.set(next,{audio:null,error:null});continue}
+    let resolve,reject;
+    const entry={audio:null,error:null,started:true,promise:new Promise((res,rej)=>{resolve=res;reject=rej})};
+    entry.resolve=resolve;entry.reject=reject;kokoroQueue.set(next,entry);
+    try{
+     const audio=await generateKokoro(text,{voice:$('kokoroVoice')?.value||kokoroVoice,onStatus:message=>{if(next===autoReadIndex)setTTSStatus(message)}});
+     if(epoch!==kokoroQueueEpoch)return;
+     entry.audio=audio;resolve(audio);
+    }catch(error){if(epoch!==kokoroQueueEpoch)return;entry.error=error;reject(error)}
+   }
+  }finally{if(epoch===kokoroQueueEpoch)kokoroQueueWorker=false}
+ })();
+}
+function queuedKokoroAudio(index){
+ let entry=kokoroQueue.get(index);
+ if(!entry){fillKokoroQueue();entry=kokoroQueue.get(index)}
+ return entry?.promise||Promise.resolve(entry?.audio||null);
+}
+function trimKokoroQueue(){for(const index of kokoroQueue.keys())if(index<autoReadIndex)kokoroQueue.delete(index)}
 
 function autoReadNodes(){return [...$('readingBody').querySelectorAll('p')]}
 function ttsSupported(){return 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window}
@@ -119,6 +155,7 @@ function ttsRateFromSpeed(position){
  return 0.65+2.35*Math.pow(p,1.25);
 }
 function cancelSpeech(){
+ clearKokoroQueue();
  if(ttsSupported())window.speechSynthesis.cancel();
  stopKokoro();
  currentUtterance=null;
@@ -140,11 +177,21 @@ function speakCurrentParagraph(){
   const nodes=autoReadNodes(),node=nodes[autoReadIndex],text=(node?.innerText||'').trim();
   if(!text)return false;
   const marker={kokoro:true};currentUtterance=marker;
+  fillKokoroQueue();
   const rate=ttsRateFromSpeed($('autoReadSpeed')?.value||55);
-  playKokoro(text,{voice:$('kokoroVoice')?.value||kokoroVoice,rate,onStatus:setTTSStatus}).then(()=>{
-   if(currentUtterance!==marker)return;
-   currentUtterance=null;
-   if(autoReadRunning&&!autoReadPaused)advanceAutoRead();
+  queuedKokoroAudio(autoReadIndex).then(audio=>{
+   if(currentUtterance!==marker||!autoReadRunning||autoReadPaused)return;
+   if(!audio)throw new Error('No buffered audio for this paragraph');
+   playKokoroAudio(audio,{rate,onStatus:setTTSStatus}).then(()=>{
+    if(currentUtterance!==marker)return;
+    currentUtterance=null;
+    if(autoReadRunning&&!autoReadPaused)advanceAutoRead();
+   }).catch(error=>{
+    if(currentUtterance!==marker)return;
+    currentUtterance=null;
+    setTTSStatus('Kokoro playback error · '+(error?.message||'unknown error'));
+    if(autoReadRunning&&!autoReadPaused){const delay=Math.max(800,Math.min(60000,text.length/autoReadCharsPerMinute(Number($('autoReadSpeed')?.value||55))*60000));autoReadTimer=setTimeout(advanceAutoRead,delay)}
+   });
   }).catch(error=>{
    if(currentUtterance!==marker)return;
    currentUtterance=null;
@@ -186,7 +233,7 @@ function scheduleAutoRead(){
 async function advanceAutoRead(){
  if(!autoReadRunning||autoReadPaused)return;
  clearTimeout(autoReadTimer);autoReadTimer=null;currentUtterance=null;
- autoReadIndex++;
+ autoReadIndex++;trimKokoroQueue();fillKokoroQueue();
  const nodes=autoReadNodes();
  if(autoReadIndex>=nodes.length){
   if(state.chapter<state.book.chapters.length-1){
@@ -210,7 +257,7 @@ export async function startAutoRead(){
   catch(error){setTTSStatus('Kokoro load failed · '+(error?.message||'check connection'));toast('Could not load Kokoro. Check your connection and try again.');return}
  }
  if(!autoReadRunning){autoReadRunning=true;autoReadPaused=false;if(!autoReadNodes().length)autoReadIndex=0}
- else if(autoReadPaused){autoReadPaused=false;if(currentUtterance?.kokoro){resumeKokoro();updateAutoReadControls();return}if(ttsSupported()&&currentUtterance){window.speechSynthesis.resume();updateAutoReadControls();return}}
+ else if(autoReadPaused){autoReadPaused=false;if(currentUtterance?.kokoro){resumeKokoro();fillKokoroQueue();updateAutoReadControls();return}if(ttsSupported()&&currentUtterance){window.speechSynthesis.resume();updateAutoReadControls();return}}
  updateAutoReadControls();
  scheduleAutoRead();
 }
@@ -238,7 +285,7 @@ export function stopAutoRead(showToast=true){
 }
 export function setAutoReadSpeed(){
  updateAutoReadControls();
- if(autoReadRunning&&!autoReadPaused){cancelSpeech();scheduleAutoRead()}
+ if(autoReadRunning&&!autoReadPaused){clearKokoroQueue();cancelSpeech();scheduleAutoRead()}
 }
 export function setTTSEnabled(){
  if(!$('ttsEnabled')?.checked){cancelSpeech();setTTSStatus('TTS off · focus mode remains available')}
