@@ -1,5 +1,4 @@
-// Main-thread audio playback + worker bridge for browser-local Kokoro TTS.
-// Inference runs in a dedicated worker so WASM cannot freeze the reader UI.
+// Main-thread audio playback + WebGPU worker bridge for experimental Kokoro TTS.
 let worker = null;
 let workerReady = null;
 let nextRequestId = 1;
@@ -21,7 +20,7 @@ function getWorker(onProgress = () => {}) {
         instance.onmessage = event => {
           const message = event.data || {};
           if (message.type === 'status') { onProgress(message.message); return; }
-          if (message.type === 'ready') { onProgress('Kokoro ready · running in background'); return; }
+          if (message.type === 'ready') { onProgress('Kokoro ready · WebGPU'); return; }
           const request = pending.get(message.id);
           if (!request) return;
           pending.delete(message.id);
@@ -29,11 +28,15 @@ function getWorker(onProgress = () => {}) {
           else if (message.type === 'loaded') request.resolve(instance);
           else if (message.type === 'audio') request.resolve({
             samples: new Float32Array(message.samples),
-            sampleRate: message.sampleRate || 24000
+            sampleRate: message.sampleRate || 24000,
+            inferenceMs: message.inferenceMs,
+            audioSeconds: message.audioSeconds,
+            realTimeFactor: message.realTimeFactor,
+            backend: message.backend || 'webgpu'
           });
         };
         instance.onerror = event => {
-          const error = new Error(event.message || 'Kokoro worker stopped unexpectedly');
+          const error = new Error(event.message || 'Kokoro WebGPU worker stopped unexpectedly');
           for (const request of pending.values()) request.reject(error);
           pending.clear();
           worker = null;
@@ -60,15 +63,27 @@ function requestWorker(type, payload = {}, onProgress = () => {}) {
 
 export async function loadKokoro(onProgress = () => {}) {
   await requestWorker('load', {}, onProgress);
-  onProgress('Kokoro ready · cached on this device');
+  onProgress('Kokoro ready · WebGPU');
   return true;
 }
 
 export function kokoroVoices() { return []; }
 
 export async function generateKokoro(text, { voice = DEFAULT_KOKORO_VOICE, onStatus = () => {} } = {}) {
-  onStatus('Generating speech in background…');
-  return requestWorker('generate', { text, voice }, onStatus);
+  onStatus('Generating speech with WebGPU…');
+  const audio = await requestWorker('generate', { text, voice }, onStatus);
+  if (Number.isFinite(audio.inferenceMs) && Number.isFinite(audio.realTimeFactor)) {
+    const rtf = audio.realTimeFactor;
+    const result = `WebGPU · ${(audio.inferenceMs / 1000).toFixed(2)}s generated / ${audio.audioSeconds.toFixed(2)}s audio · RTF ${rtf.toFixed(2)}`;
+    onStatus(result);
+    console.info('[Quiet Reader TTS benchmark]', {
+      backend: audio.backend,
+      inferenceSeconds: audio.inferenceMs / 1000,
+      audioSeconds: audio.audioSeconds,
+      realTimeFactor: rtf
+    });
+  }
+  return audio;
 }
 
 export async function playKokoroAudio(audio, { rate = 1, onStatus = () => {} } = {}) {
@@ -86,7 +101,7 @@ export async function playKokoroAudio(audio, { rate = 1, onStatus = () => {} } =
   source.playbackRate.value = Math.max(0.65, Math.min(3, rate));
   source.connect(audioContext.destination);
   activeSource = source;
-  onStatus('Speaking · Kokoro local');
+  onStatus('Speaking · Kokoro WebGPU');
   return new Promise((resolve, reject) => {
     activeResolve = resolve;
     source.onended = () => {
