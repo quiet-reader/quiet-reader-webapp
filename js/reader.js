@@ -364,7 +364,11 @@ export function setTTSEngine(){
  $('ttsVoice')?.classList.toggle('hidden',kokoro);
  $('kokoroVoice')?.classList.toggle('hidden',!kokoro);
  setTTSStatus(kokoro?'Kokoro · loads on first Auto-read':'System voice selected');
- if(autoReadRunning&&!autoReadPaused){cancelSpeech();scheduleAutoRead()}
+ if(autoReadRunning&&!autoReadPaused){
+  cancelSpeech();
+  if(kokoro)rebuildKokoroSentenceUnits();
+  scheduleAutoRead();
+ }
 }
 export function initTTS(){
  if(!ttsSupported()){loadTTSVoices();return}
