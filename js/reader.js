@@ -97,7 +97,7 @@ export async function openNovelSearchResult(chapterIndex,paragraphIndex,offset,q
 }
 
 function updateBookmarkButton(){const button=$('bookmarkBtn');if(!button)return;const saved=(state.book?.bookmarks||[]).some(mark=>mark.chapter===state.chapter);button.classList.toggle('is-bookmarked',saved);button.textContent=saved?'★':'☆';button.setAttribute('aria-pressed',String(saved));button.title=saved?'Remove bookmark from this chapter':'Bookmark this chapter';button.setAttribute('aria-label',button.title)}
-export async function addBookmark(){const b=state.book;if(!b)return;b.bookmarks=b.bookmarks||[];const existing=b.bookmarks.findIndex(mark=>mark.chapter===state.chapter);if(existing!==-1){b.bookmarks.splice(existing,1);toast('Bookmark removed')}else{b.bookmarks.push({id:crypto.randomUUID?.()||String(Date.now()),chapter:state.chapter,offset:window.scrollY,text:$('readingTitle').textContent,created:Date.now()});toast('Bookmark saved')}await put(b);updateBookmarkButton()}
+export async function addBookmark(){const b=state.book;if(!b)return;b.bookmarks=b.bookmarks||[];const existing=b.bookmarks.some(mark=>mark.chapter===state.chapter);if(existing){b.bookmarks=b.bookmarks.filter(mark=>mark.chapter!==state.chapter);toast('Bookmark removed')}else{b.bookmarks.push({id:crypto.randomUUID?.()||String(Date.now()),chapter:state.chapter,offset:window.scrollY,text:$('readingTitle').textContent,created:Date.now()});toast('Bookmark saved')}await put(b);updateBookmarkButton()}
 let chapterFormat='normal';
 let sectionParts=[];
 function isEnglish(text){
