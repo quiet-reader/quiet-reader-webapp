@@ -42,3 +42,7 @@ This branch changes the experimental Kokoro engine from q8/WASM to WebGPU/FP32 s
 The WebGPU test branch now splits reader paragraphs into individual sentences. It starts synthesis for the current sentence and keeps a rolling look-ahead queue of up to 10 sentences. As each sentence finishes, the next ready sentence is played; synthesis continues in the worker while audio is playing. Paragraph highlighting remains synchronized to the paragraph containing the active sentence.
 
 This is sentence-level incremental playback, not token-by-token waveform streaming: each sentence must finish synthesis before that sentence can play. If the GPU cannot synthesize sentences faster than real-time, occasional waits can still occur. The worker's inference-time / audio-duration RTF logs remain available for measuring this.
+
+## Independent scrolling and speech speed
+
+The auto-read slider controls visual scrolling / focus pacing only. The separate Speech selector offers 1×, 1.25×, 1.5× and 2×. Kokoro receives this speed value during sentence synthesis, while generated audio plays at its original sample rate (playback rate 1.0) so the pitch is not raised by speeding up the audio buffer. The system speech engine uses the same Speech selector through its native utterance rate.
