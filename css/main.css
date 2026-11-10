@@ -28,3 +28,6 @@
 .section-content{padding:0 14px 12px;line-height:1.9;overflow-wrap:anywhere}
 .section-content p{margin:0;white-space:normal}
 @media(max-width:650px){.section-view{padding:0 18px}.section-heading-row{align-items:flex-start;flex-direction:column}.chapter-import-actions{align-items:flex-start}}
+
+.library-actions{justify-content:flex-end;flex-wrap:wrap}.library-actions button{white-space:nowrap}
+@media(max-width:650px){.library-actions{width:100%;justify-content:flex-start}.library-actions button{flex:1 1 auto}}
