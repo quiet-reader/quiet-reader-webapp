@@ -26,7 +26,7 @@ The app deliberately keeps the existing `quietbook-v2` IndexedDB database and `i
 
 This branch changes the experimental Kokoro engine from q8/WASM to WebGPU/FP32 so it can be compared against `adding-tts-feature-test`.
 
-- Model: `dev-amarnadh-gandham/Kokoro-82M-v1.0-ONNX-webgpu`, a graph-patched equivalent of Kokoro-82M-82M intended to correct an ONNX Runtime WebGPU ConvTranspose issue in the upstream export.
+- Model: `dev-amarnadh-gandham/Kokoro-82M-v1.0-ONNX-webgpu`, a graph-patched equivalent of Kokoro-82M intended to correct an ONNX Runtime WebGPU ConvTranspose issue in the upstream export.
 - Runtime: `kokoro-js` 1.2.1 from jsDelivr.
 - Inference: WebGPU in a dedicated Web Worker; FP32 model weights.
 - Voice: `af_heart` by default. The kokoro-js voice assets remain loaded from the upstream ONNX community model repository.
