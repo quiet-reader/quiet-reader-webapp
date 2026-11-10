@@ -4,7 +4,8 @@ A local-first web reader for personal novels and EPUBs. It runs as a static webs
 
 ## Features
 
-- Personal library: create novels, edit chapters, lock editing, and add cover images.
+- Personal library: create novels, edit chapters, lock editing, add cover images, and keep a separate per-novel notes page.
+- Novel-wide search: find chapter titles and text across the entire book, with snippets and direct jumps to matching passages.
 - EPUB import and export.
 - Reader controls: chapter navigation, saved progress, theme, text size and reading width.
 - Persistent text highlights with notes, plus chapter bookmarks and a highlights manager.
