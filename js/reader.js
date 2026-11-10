@@ -2,13 +2,13 @@ import {state} from './state.js';import {put} from './db.js';import {$,esc,toast
 import {loadKokoro,generateKokoro,playKokoroAudio,pauseKokoro,resumeKokoro,stopKokoro,DEFAULT_KOKORO_VOICE} from './kokoro.js';
 export function chapterHTML(ch){
  const images=new Map((ch.images||[]).map(im=>[im.id,im]));
- return paragraphs(ch.text).map(paragraph=>{
+ return paragraphs(ch.text).map((paragraph,paragraphIndex)=>{
   const parts=paragraph.split(/(\[IMAGE:[^\]]+\])/g).map(part=>{
    const match=part.match(/^\[IMAGE:([^\]]+)\]$/);
    if(match){const im=images.get(match[1]);return im?'<figure><img src="'+im.data+'" alt=""><figcaption class="tiny muted">'+esc(im.caption||'')+'</figcaption></figure>':''}
    return esc(part);
   }).join('');
-  return /^\[IMAGE:[^\]]+\]$/.test(paragraph)?parts:'<p>'+parts+'</p>';
+  return /^\[IMAGE:[^\]]+\]$/.test(paragraph)?parts:'<p data-paragraph-index="'+paragraphIndex+'">'+parts+'</p>';
  }).join('');
 }
 export function openReader(index){stopAutoRead(false);const b=state.book;if(!b?.chapters?.length){toast('Add a chapter first');return}state.chapter=Math.max(0,Math.min(index,b.chapters.length-1));drawReader();setScreen('reader');const saved=b.progress?.chapter===state.chapter?b.progress.offset:0;window.scrollTo(0,saved||0)}
@@ -16,6 +16,78 @@ export function drawReader(){const b=state.book,c=b.chapters[state.chapter];if(!
 export async function saveProgress(){if(!state.book)return;state.book.progress={chapter:state.chapter,offset:window.scrollY};state.book.updated=Date.now();await put(state.book)}
 export async function changeChapter(delta){stopAutoRead();await saveProgress();const next=state.chapter+delta;if(next<0||next>=state.book.chapters.length)return;state.chapter=next;drawReader();window.scrollTo(0,0)}
 export async function jumpChapter(index){stopAutoRead();await saveProgress();state.chapter=Number(index);drawReader();window.scrollTo(0,0)}
+let novelSearchTimer=null;
+let novelSearchBookId=null;
+let novelSearchIndex=[];
+function buildNovelSearchIndex(){
+ novelSearchBookId=state.book?.id||null;
+ novelSearchIndex=(state.book?.chapters||[]).map((chapter,chapterIndex)=>({
+  chapterIndex,
+  title:String(chapter.title||'Chapter '+(chapterIndex+1)),
+  titleLower:String(chapter.title||'Chapter '+(chapterIndex+1)).toLocaleLowerCase(),
+  paragraphs:paragraphs(chapter.text).map((text,paragraphIndex)=>({text,lower:text.toLocaleLowerCase(),paragraphIndex}))
+ }));
+}
+function searchSnippet(text,offset,length){
+ const start=Math.max(0,offset-58),end=Math.min(text.length,offset+length+82);
+ return (start?'…':'')+text.slice(start,end)+(end<text.length?'…':'');
+}
+export function searchNovel(query){
+ const input=$('novelSearch'),results=$('novelSearchResults');
+ if(!input||!results)return;
+ const term=String(query??input.value).trim();
+ if(!term){results.innerHTML='<p class="tiny muted">Search across every chapter in this novel.</p>';return}
+ if(novelSearchBookId!==state.book?.id)buildNovelSearchIndex();
+ const needle=term.toLocaleLowerCase(),matches=[];
+ let total=0;
+ for(const chapter of novelSearchIndex){
+  let titleAt=chapter.titleLower.indexOf(needle);
+  if(titleAt!==-1){total++;if(matches.length<80)matches.push({chapterIndex:chapter.chapterIndex,paragraphIndex:-1,offset:titleAt,titleMatch:true,snippet:chapter.title})}
+  for(const paragraph of chapter.paragraphs){
+   let at=0;
+   while((at=paragraph.lower.indexOf(needle,at))!==-1){
+    total++;
+    if(matches.length<80)matches.push({chapterIndex:chapter.chapterIndex,paragraphIndex:paragraph.paragraphIndex,offset:at,titleMatch:false,snippet:searchSnippet(paragraph.text,at,term.length)});
+    at+=Math.max(1,needle.length);
+   }
+  }
+ }
+ if(!total){results.innerHTML='<p class="tiny muted">No matches found.</p>';return}
+ results.innerHTML='<p class="tiny muted">'+total.toLocaleString()+' match'+(total===1?'':'es')+(total>matches.length?' · showing first '+matches.length:'')+'</p>'+matches.map((m,i)=>'<button type="button" class="novel-search-result" data-search-result="'+i+'"><b>Chapter '+(m.chapterIndex+1)+' · '+esc(novelSearchIndex[m.chapterIndex].title)+'</b><span>'+esc(m.titleMatch?'Chapter title: '+m.snippet:m.snippet)+'</span></button>').join('');
+ results.querySelectorAll('[data-search-result]').forEach((button,i)=>{
+  const match=matches[i];
+  button.dataset.searchChapter=match.chapterIndex;
+  button.dataset.searchParagraph=match.paragraphIndex;
+  button.dataset.searchOffset=match.offset;
+  button.dataset.searchTitle=match.titleMatch?'1':'0';
+ });
+}
+function textPointAt(root,offset){
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+ let node,remaining=offset;
+ while((node=walker.nextNode())){
+  if(remaining<=node.nodeValue.length)return{node,offset:remaining};
+  remaining-=node.nodeValue.length;
+ }
+ return null;
+}
+function highlightSearchMatch(paragraph,offset,term){
+ if(!paragraph||!term)return false;
+ const point=textPointAt(paragraph,offset),end=textPointAt(paragraph,offset+term.length);
+ if(!point||!end)return false;
+ const range=document.createRange();
+ range.setStart(point.node,point.offset);range.setEnd(end.node,end.offset);
+ const mark=document.createElement('span');mark.className='search-match';
+ try{mark.append(range.extractContents());range.insertNode(mark);mark.scrollIntoView({behavior:'smooth',block:'center'});return true}
+ catch{return false}
+}
+export async function openNovelSearchResult(chapterIndex,paragraphIndex,offset,query,titleMatch=false){
+ await jumpChapter(chapterIndex);
+ if(titleMatch){$('readingTitle').scrollIntoView({behavior:'smooth',block:'center'});return}
+ const paragraph=$('readingBody').querySelector('[data-paragraph-index="'+Number(paragraphIndex)+'"]');
+ if(!highlightSearchMatch(paragraph,Number(offset),String(query||'')))toast('Could not locate that exact match in the chapter');
+}
+
 export function addBookmark(){const b=state.book;b.bookmarks=b.bookmarks||[];b.bookmarks.push({id:crypto.randomUUID?.()||String(Date.now()),chapter:state.chapter,offset:window.scrollY,text:$('readingTitle').textContent,created:Date.now()});put(b).then(()=>toast('Bookmark saved'))}
 let chapterFormat='normal';
 let sectionParts=[];
