@@ -4,8 +4,8 @@ let workerReady = null;
 let nextRequestId = 1;
 const pending = new Map();
 let audioContext = null;
-let activeSource = null;
-let activeResolve = null;
+let activeSources = new Set();
+let activeResolves = new Set();
 let playbackPaused = false;
 
 export const DEFAULT_KOKORO_VOICE = 'af_heart';
@@ -89,7 +89,6 @@ export async function generateKokoro(text, { voice = DEFAULT_KOKORO_VOICE, onSta
 export async function playKokoroAudio(audio, { rate = 1, onStatus = () => {} } = {}) {
   const { samples, sampleRate } = audio || {};
   if (!samples?.length) throw new Error('Kokoro returned empty audio');
-  stopKokoro();
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) throw new Error('Web Audio is unavailable in this browser');
   audioContext ||= new AudioContextClass();
@@ -98,22 +97,21 @@ export async function playKokoroAudio(audio, { rate = 1, onStatus = () => {} } =
   buffer.copyToChannel(samples, 0);
   const source = audioContext.createBufferSource();
   source.buffer = buffer;
-  source.playbackRate.value = Math.max(0.65, Math.min(3, rate));
+  const playbackRate = Math.max(0.65, Math.min(3, rate));
+  source.playbackRate.value = playbackRate;
   source.connect(audioContext.destination);
-  activeSource = source;
+  activeSources.add(source);
   onStatus('Speaking · Kokoro WebGPU');
   return new Promise((resolve, reject) => {
-    activeResolve = resolve;
+    activeResolves.add(resolve);
     source.onended = () => {
-      if (activeSource === source) {
-        activeSource = null;
-        activeResolve = null;
-        resolve();
-      }
+      activeSources.delete(source);
+      activeResolves.delete(resolve);
+      resolve();
     };
     try { source.start(); } catch (error) {
-      activeSource = null;
-      activeResolve = null;
+      activeSources.delete(source);
+      activeResolves.delete(resolve);
       reject(error);
     }
   });
@@ -134,12 +132,11 @@ export function resumeKokoro() {
 }
 export function stopKokoro() {
   playbackPaused = false;
-  if (activeSource) {
-    const source = activeSource;
-    activeSource = null;
+  for (const source of activeSources) {
     source.onended = null;
     try { source.stop(); } catch {}
-    activeResolve?.();
-    activeResolve = null;
   }
+  activeSources.clear();
+  for (const resolve of activeResolves) resolve();
+  activeResolves.clear();
 }
