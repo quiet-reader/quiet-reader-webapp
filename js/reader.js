@@ -185,7 +185,7 @@ async function advanceAutoRead(){
 export function startAutoRead(){
  if(!state.book?.chapters?.length)return;
  if(!autoReadRunning){autoReadRunning=true;autoReadPaused=false;if(!autoReadNodes().length)autoReadIndex=0}
- else if(autoReadPaused){autoReadPaused=false;if(ttsSupported())window.speechSynthesis.resume()}
+ else if(autoReadPaused){autoReadPaused=false;if(ttsSupported()&&currentUtterance){window.speechSynthesis.resume();updateAutoReadControls();return}}
  updateAutoReadControls();
  scheduleAutoRead();
 }
