@@ -48,14 +48,14 @@ export function renderChapterFormat(mode=chapterFormat){
  const controls=$('chapterFormatControls'),view=$('sectionView');
  if(!controls||!view)return;
  const chapter=state.book?.chapters?.[state.chapter];
- const english=chapter&&isEnglish(chapter.text);
- controls.classList.toggle('hidden',!english);
+ const hasText=Boolean(chapter?.text?.trim());
+ controls.classList.toggle('hidden',!hasText);
  view.classList.add('hidden');view.innerHTML='';
  controls.querySelectorAll('[data-chapter-format]').forEach(b=>b.classList.toggle('active',b.dataset.chapterFormat===chapterFormat));
- if(!english){chapterFormat='normal';return}
+ if(!hasText){chapterFormat='normal';return}
  if(chapterFormat!=='sections')return;
  sectionParts=splitIntoSections(chapter.text,5000);
- view.innerHTML=sectionParts.map((part,i)=>'<section class="reading-section"><div class="section-heading-row"><b>Section '+(i+1)+' <span class="muted tiny">· '+part.length.toLocaleString()+' characters</span></b><div class="row"><button type="button" data-copy-section="'+i+'">Copy section</button><button type="button" data-toggle-section="'+i+'">Expand</button></div></div><div class="section-content hidden"><p>'+esc(part).replace(/\n/g,'<br>')+'</p></div></section>').join('');
+ view.innerHTML=sectionParts.map((part,i)=>'<section class="reading-section"><div class="section-heading-row"><b>Section '+(i+1)+' <span class="muted tiny">· '+part.length.toLocaleString()+' characters</span></b><div class="row"><button type="button" data-copy-section="'+i+'">Copy section</button><button type="button" data-toggle-section="'+i+'">Expand</button></div></div><div class="section-content hidden"><p>'+esc(part).replace(/\\n/g,'<br>')+'</p></div></section>').join('');
  view.classList.remove('hidden');
 }
 export async function copySection(index){
