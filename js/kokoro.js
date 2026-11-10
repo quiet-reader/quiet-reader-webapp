@@ -8,6 +8,7 @@ let audioContext = null;
 let activeSource = null;
 let activeResolve = null;
 let playbackPaused = false;
+let generationChain = Promise.resolve();
 
 export const DEFAULT_KOKORO_VOICE = 'af_heart';
 
@@ -49,13 +50,17 @@ export function kokoroVoices() {
 }
 
 export async function generateKokoro(text, { voice = DEFAULT_KOKORO_VOICE, onStatus = () => {} } = {}) {
-  const tts = await loadKokoro(onStatus);
-  onStatus('Generating speech…');
-  const result = await tts.generate(text, { voice });
+  const task = generationChain.then(async () => {
+    const tts = await loadKokoro(onStatus);
+    onStatus('Generating speech…');
+    const result = await tts.generate(text, { voice });
   const samples = result.audio;
   const sampleRate = result.sampling_rate || 24000;
   if (!samples || !samples.length) throw new Error('Kokoro returned empty audio');
-  return { samples, sampleRate };
+    return { samples, sampleRate };
+  });
+  generationChain = task.catch(() => {});
+  return task;
 }
 
 export async function playKokoroAudio(audio, { rate = 1, onStatus = () => {} } = {}) {
