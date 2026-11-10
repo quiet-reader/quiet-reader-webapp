@@ -46,7 +46,7 @@ Optional Gotham Pro font files can be placed in `fonts/` using the filenames ref
 In the reader toolbar, set **Engine → Kokoro (offline)** and start Auto-read. The first run requires an internet connection to download the Kokoro JavaScript runtime and the quantized ONNX model (roughly 90–95 MB, plus tokenizer/voice/runtime assets). Model files are cached by Transformers.js in the browser Cache API; the app shell and runtime modules are cached by the service worker. Later reading can work offline after the first load has completed.
 
 - Default model: `onnx-community/Kokoro-82M-v1.0-ONNX`
-- Runtime: `kokoro-js` 1.2.1
+- Runtime: `kokoro-js` 1.2.1, loaded as browser ESM from jsDelivr
 - Inference: WASM with 8-bit quantization (`q8`) for a smaller download and broad browser compatibility.
 - Default voice: `af_heart`; several English voices are selectable.
 - No text is sent to a TTS API. Speech is generated on the device.
