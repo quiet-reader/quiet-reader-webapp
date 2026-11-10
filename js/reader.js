@@ -109,10 +109,10 @@ function scheduleAutoRead(){
  if(!nodes.length){advanceAutoRead();return}
  if(autoReadIndex>=nodes.length){advanceAutoRead();return}
  highlightAutoReadParagraph();
- const speed=Number($('autoReadSpeed')?.value||5);
+ const speed=Number($('autoReadSpeed')?.value||55);
  const chars=(nodes[autoReadIndex].innerText||'').length;
- const charsPerMinute=100+(speed-1)*180;
- const delay=Math.max(1200,Math.min(60000,chars/charsPerMinute*60000));
+ const charsPerMinute=autoReadCharsPerMinute(speed);
+ const delay=Math.max(80,Math.min(60000,chars/charsPerMinute*60000));
  autoReadTimer=setTimeout(advanceAutoRead,delay);
 }
 async function advanceAutoRead(){
