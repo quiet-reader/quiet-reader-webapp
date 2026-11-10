@@ -7,6 +7,7 @@ let engine = null;
 let audioContext = null;
 let activeSource = null;
 let activeResolve = null;
+let playbackPaused = false;
 
 export const DEFAULT_KOKORO_VOICE = 'af_heart';
 
@@ -14,6 +15,7 @@ export async function loadKokoro(onProgress = () => {}) {
   if (engine) return engine;
   if (!enginePromise) {
     enginePromise = (async () => {
+      if ('serviceWorker' in navigator && location.protocol !== 'file:') await navigator.serviceWorker.ready.catch(() => {});
       onProgress('Loading Kokoro runtime…');
       const { KokoroTTS } = await import(MODULE_URL);
       onProgress('Downloading / loading Kokoro model (about 90 MB)…');
@@ -57,7 +59,7 @@ export async function playKokoro(text, { voice = DEFAULT_KOKORO_VOICE, rate = 1,
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) throw new Error('Web Audio is unavailable in this browser');
   audioContext ||= new AudioContextClass();
-  if (audioContext.state === 'suspended') await audioContext.resume();
+  if (audioContext.state === 'suspended' && !playbackPaused) await audioContext.resume();
   const buffer = audioContext.createBuffer(1, samples.length, sampleRate);
   buffer.copyToChannel(samples, 0);
   const source = audioContext.createBufferSource();
@@ -84,12 +86,15 @@ export async function playKokoro(text, { voice = DEFAULT_KOKORO_VOICE, rate = 1,
 }
 
 export function pauseKokoro() {
+  playbackPaused = true;
   if (audioContext?.state === 'running') audioContext.suspend();
 }
 export function resumeKokoro() {
+  playbackPaused = false;
   if (audioContext?.state === 'suspended') audioContext.resume();
 }
 export function stopKokoro() {
+  playbackPaused = false;
   if (activeSource) {
     const source = activeSource;
     activeSource = null;
