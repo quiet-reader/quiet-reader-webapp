@@ -61,7 +61,7 @@ self.onmessage = event => {
   queue = queue.then(async () => {
     const tts = await loadModel();
     const started = performance.now();
-    const result = await tts.generate(message.text, { voice: message.voice });
+    const result = await tts.generate(message.text, { voice: message.voice, speed: message.speed ?? 1 });
     const inferenceMs = performance.now() - started;
     const samples = result.audio;
     if (!samples?.length) throw new Error('Kokoro returned empty audio');
