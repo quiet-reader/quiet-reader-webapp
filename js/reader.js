@@ -150,7 +150,7 @@ function selectedVoice(){
 }
 function setTTSStatus(message){const el=$('ttsStatus');if(el)el.textContent=message}
 function loadTTSVoices(){
- if(!ttsSupported()){setTTSStatus('TTS unavailable');$('ttsVoice').innerHTML='<option value="">Not supported by this browser</option>';$('ttsEnabled').checked=false;$('ttsEnabled').disabled=true;return}
+ if(!ttsSupported()){setTTSStatus('TTS unavailable');$('ttsVoice').innerHTML='<option value="">Not supported by this browser</option>';$('ttsEnabled').checked=false;$('ttsEnabled').disabled=true;$('ttsSpeechSpeedControl')?.classList.add('hidden');return}
  availableVoices=window.speechSynthesis.getVoices()||[];
  if(!availableVoices.length){setTTSStatus('Waiting for voices…');return}
  voicesReady=true;
