@@ -101,3 +101,5 @@ body:has(#readerPanel:not(.hidden)) #readerMenuBtn{transform:rotate(180deg);back
 .reader-settings-group .tts-engine-control select,.reader-settings-group .tts-voice-control select{width:100%;max-width:none}
 .reader-settings-group .tts-status{display:block;min-width:0;margin-top:8px}
 @media(max-width:650px){.reader-toolbar{gap:6px;padding:7px 9px}.reader-book-title{max-width:34vw}.reader-toolbar #autoReadStart{font-size:12px;padding:8px 9px}.reader-toolbar #bookmarkBtn{padding:7px 10px}.reader-settings-trigger{width:36px;height:36px}.reader-panel{width:min(360px,92vw)}}
+
+body:has(#drawer.open) #menuBtn{transform:rotate(180deg);background:var(--panel2);border-color:var(--accent)}
