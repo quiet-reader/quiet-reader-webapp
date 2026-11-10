@@ -16,3 +16,15 @@
 .reading-body mark[data-color="blue"]{background:#83b8e8;color:#142536}
 .reading-body mark[data-color="pink"]{background:#e7a0bd;color:#351b28}
 .reading-body mark[data-color="purple"]{background:#b9a0e8;color:#261d38}
+
+.chapter-import-actions{margin:12px 0}
+.chapter-format-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 18px}
+.chapter-format-controls button{font-size:13px;padding:6px 11px}
+.chapter-format-controls button.active{background:var(--fg);color:#292929}
+.section-view{max-width:var(--reader-width);margin:0 auto 60px;padding:0 24px}
+.reading-section{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:10px 0;overflow:hidden}
+.section-heading-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px}
+.section-heading-row button{font-size:12px;padding:5px 9px}
+.section-content{padding:0 14px 12px;line-height:1.9;overflow-wrap:anywhere}
+.section-content p{margin:0;white-space:normal}
+@media(max-width:650px){.section-view{padding:0 18px}.section-heading-row{align-items:flex-start;flex-direction:column}.chapter-import-actions{align-items:flex-start}}
