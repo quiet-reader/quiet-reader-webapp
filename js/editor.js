@@ -26,3 +26,23 @@ export async function importTextBook(fileList){
  await put(book);await refresh();state.book=book;drawBook();setScreen('book');
  toast(imported.length+' TXT chapter'+(imported.length===1?'':'s')+' imported');
 }
+
+export async function importTextChapters(fileList){
+ if(!state.book)return toast('Open a book first');
+ if(state.book.locked)return toast('Unlock this book before adding chapters');
+ const files=[...fileList].filter(f=>/\.txt$/i.test(f.name));
+ if(!files.length)return toast('No .txt files selected');
+ const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
+ files.sort((a,b)=>collator.compare(a.webkitRelativePath||a.name,b.webkitRelativePath||b.name));
+ const imported=[];
+ for(const file of files){
+  const text=(await file.text()).replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').trim();
+  if(!text)continue;
+  imported.push({title:file.name.replace(/\.txt$/i,''),text,images:[]});
+ }
+ if(!imported.length)return toast('The selected TXT files are empty');
+ state.book.chapters.push(...imported);
+ state.book.updated=Date.now();
+ await put(state.book);await refresh();drawBook();
+ toast(imported.length+' TXT chapter'+(imported.length===1?'':'s')+' added');
+}
