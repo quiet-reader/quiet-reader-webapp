@@ -26,7 +26,7 @@ function isEnglish(text){
  return hits>=3&&hits/words.length>=0.035;
 }
 function splitIntoSections(text,limit=5000){
- const paragraphsList=String(text||'').split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean);
+ const paragraphsList=paragraphs(text);
  const chunks=[];let current='';
  const pushPiece=piece=>{if(!piece)return;if(!current)current=piece;else if(current.length+2+piece.length<=limit)current+='\n\n'+piece;else{chunks.push(current);current=piece}};
  for(const paragraph of paragraphsList){
@@ -43,6 +43,7 @@ function splitIntoSections(text,limit=5000){
  if(current)chunks.push(current);
  return chunks;
 }
+
 export function renderChapterFormat(mode=chapterFormat){
  chapterFormat=mode;
  const controls=$('chapterFormatControls'),view=$('sectionView');
@@ -55,7 +56,7 @@ export function renderChapterFormat(mode=chapterFormat){
  if(!hasText){chapterFormat='normal';return}
  if(chapterFormat!=='sections')return;
  sectionParts=splitIntoSections(chapter.text,5000);
- view.innerHTML=sectionParts.map((part,i)=>'<section class="reading-section"><div class="section-heading-row"><b>Section '+(i+1)+' <span class="muted tiny">· '+part.length.toLocaleString()+' characters</span></b><div class="row"><button type="button" data-copy-section="'+i+'">Copy section</button><button type="button" data-toggle-section="'+i+'">Expand</button></div></div><div class="section-content hidden"><p>'+esc(part).replace(/\\n/g,'<br>')+'</p></div></section>').join('');
+ view.innerHTML=sectionParts.map((part,i)=>'<section class="reading-section"><div class="section-heading-row"><b>Section '+(i+1)+' <span class="muted tiny">· '+part.length.toLocaleString()+' characters</span></b><div class="row"><button type="button" data-copy-section="'+i+'">Copy section</button><button type="button" data-toggle-section="'+i+'">Expand</button></div></div><div class="section-content hidden"><p>'+esc(part).replace(/\n/g,'<br>')+'</p></div></section>').join('');
  view.classList.remove('hidden');
 }
 export async function copySection(index){
