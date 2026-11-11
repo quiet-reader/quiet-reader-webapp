@@ -263,3 +263,12 @@ select:focus{animation:select-focus-in .2s ease both}
 .saved-highlight-color[data-color="yellow"]{background:#e8d47b;box-shadow:0 0 12px #e8d47b88}.saved-highlight-color[data-color="green"]{background:#8bc58b;box-shadow:0 0 12px #8bc58b88}.saved-highlight-color[data-color="blue"]{background:#83b8e8;box-shadow:0 0 12px #83b8e888}.saved-highlight-color[data-color="pink"]{background:#e7a0bd;box-shadow:0 0 12px #e7a0bd88}.saved-highlight-color[data-color="purple"]{background:#b9a0e888;box-shadow:0 0 12px #b9a0e888}
 @keyframes highlight-color-pulse{0%,100%{opacity:.65;filter:saturate(.9)}50%{opacity:1;filter:saturate(1.35) brightness(1.12)}}
 .reading-body mark[data-highlight]{position:relative;z-index:0;isolation:isolate;display:inline!important;padding:0 .08em!important;border-radius:3px!important;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+
+.chapter-index-row{align-items:center;gap:8px;flex-wrap:wrap}.chapter-index-row .chapter-name{flex:1 1 220px}
+.chapter-added-date{display:flex;align-items:center;gap:6px;margin-top:6px;width:max-content;max-width:100%;padding:4px 7px;border:1px solid var(--line);border-radius:5px;background:color-mix(in srgb,var(--panel2) 65%,var(--bg));font-size:10px;line-height:1.35;color:var(--muted)}
+.chapter-added-date span{text-transform:uppercase;letter-spacing:.06em;font-weight:750;color:var(--accent)}.chapter-added-date time{font-variant-numeric:tabular-nums}
+.chapter-history-entry{padding:12px 0;border-bottom:1px solid var(--line)}.chapter-history-entry:last-child{border-bottom:0}
+.chapter-history-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.chapter-history-heading b{color:var(--accent);font-size:13px}.chapter-history-heading time{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chapter-history-entry p{white-space:pre-wrap;overflow-wrap:anywhere;max-height:150px;overflow:auto;margin:8px 0 0;font-size:12px;line-height:1.55;color:var(--muted)}
+.chapter-history-entry.current{background:color-mix(in srgb,var(--accent) 6%,transparent);padding:12px;border-radius:7px}
+@media(max-width:650px){.chapter-index-row{gap:6px}.chapter-index-row .chapter-name{flex-basis:100%}.chapter-added-date{font-size:9px}.chapter-index-row>button{padding:6px 8px;font-size:11px}}
