@@ -363,3 +363,10 @@ select:focus{animation:select-focus-in .2s ease both}
 .library-search-mode .select-popover button.active{background:color-mix(in srgb,var(--accent) 22%,var(--panel));border-color:var(--accent);color:var(--accent)}
 .modal #modalClose{display:grid;place-items:center;flex:0 0 36px;width:36px;min-width:36px;height:36px;min-height:36px;padding:0;line-height:1;font-size:21px;border-radius:8px}
 @media(max-width:420px){.library-search-mode .select-popover-wrap{min-width:112px}.library-search-mode .select-popover-trigger{min-height:42px}}
+
+
+/* Search scope is a standalone control, not a form label */
+.library-search-mode{display:flex!important;flex-direction:row!important;align-items:stretch!important;justify-content:stretch!important;gap:0!important;padding:0!important;border:0!important;outline:0!important;box-shadow:none!important}
+.library-search-mode::before,.library-search-mode::after{content:none!important;display:none!important}
+.library-search-mode .select-popover-wrap{display:flex!important;align-items:stretch!important;align-self:stretch!important;margin:0!important;padding:0!important;border:0!important;outline:0!important;box-shadow:none!important}
+.library-search-mode .select-popover-trigger{align-self:stretch!important;margin:0!important}
