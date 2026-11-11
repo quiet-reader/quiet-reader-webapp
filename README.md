@@ -72,3 +72,9 @@ The `novel-linking` branch adds local relationships between library novels and t
 - Relationships are saved with local novel records in IndexedDB and included in full novel backups.
 
 Chapter pairing is positional, not based on title similarity or translation detection. Only matching chapter indexes are paired automatically; extra chapters in the longer novel remain unpaired.
+
+
+### Reader and library search/navigation
+- Reader has subtle previous/next arrows on either side of the chapter title; they become visible on hover or keyboard focus. Bottom navigation includes an Index shortcut to the novel's chapter list.
+- Library search can search author names only or search all novel titles, authors, chapter titles, and chapter text. The existing source/tag filters and sorting continue to apply.
+- Highlights and bookmarks have a shared search field within their respective tabs, matching novel title, author, chapter title, or saved text.
