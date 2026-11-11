@@ -47,7 +47,7 @@ export async function importTextChapters(fileList){
  }
  if(!imported.length)return toast('The selected TXT files are empty');
  state.book.chapters.push(...imported);
- state.book.updated=Date.now();
+ state.book.updated=Date.now();addEditEvent(state.book,'Chapters imported',imported.length+' TXT chapters');
  await put(state.book);await refresh();drawBook();
  toast(imported.length+' TXT chapter'+(imported.length===1?'':'s')+' added');
 }
