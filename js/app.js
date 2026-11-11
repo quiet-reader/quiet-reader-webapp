@@ -68,7 +68,6 @@ selectionBar.addEventListener('click',e=>{
   const selectedParagraph=node?(node.nodeType===1?node:node.parentElement)?.closest('p,li,blockquote,h1,h2,h3,h4,h5,h6,pre'):null;
   paragraphHighlightTarget=selectedParagraph||activeParagraph;
   if(!paragraphHighlightTarget){toast('Tap inside a paragraph first');return}
-  selectionBar.querySelector('.selection-toolbar-label').lastChild.textContent=' · Choose colour';
   return;
  }
  const swatch=e.target.closest('[data-highlight-color]');
