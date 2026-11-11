@@ -1,6 +1,6 @@
 import {getAll} from './db.js';
 
-const filterNames={all:'All',epub:'EPUBs',manual:'My novels',pdf:'PDFs'};
+const filterNames={all:'All',epub:'EPUBs',manual:'My novels',pdf:'PDFs',gallery:'Galleries'};
 let updateSequence=0;
 let scheduled=false;
 function matchesSearch(book,query,mode){
@@ -23,9 +23,9 @@ async function updateCounts(){
    if(!button)continue;
    let count=button.querySelector('.filter-count');
    if(!count){count=document.createElement('span');count.className='filter-count';count.setAttribute('aria-hidden','true');button.append(count)}
-   const total=filter==='all'?matching.length:matching.filter(book=>book.source===filter).length;
+   const total=filter==='all'?matching.length:matching.filter(book=>filter==='gallery'?book.source==='gallery':book.source===filter).length;
    count.textContent=total.toLocaleString();
-   button.setAttribute('aria-label',label+', '+total+' '+(total===1?'book':'books'));
+   button.setAttribute('aria-label',label+', '+total+' '+(total===1?'item':'items'));
    button.title=total+' '+(total===1?'book':'books')+' match the current search and tag filters';
   }
  }catch(error){console.warn('Could not update library counts',error)}
