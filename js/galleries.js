@@ -2,7 +2,7 @@ import {state,freshBook} from './state.js';
 import {put} from './db.js';
 import {$,esc,toast,modal,closeModal,dataURL,uid} from './utils.js';
 import {refresh,openBook,setBookTab,drawBook} from './library.js';import {addEditEvent} from './history.js';
-import {openImageTranslation,renderImageTranslationOverlay} from './image-translation.js';
+import {openImageTranslation,renderImageTranslationOverlay,clearImageTranslationOverlay} from './image-translation.js';
 
 let sliderIndex=0;
 let viewerKeyHandler=null;let selectedImageIds=new Set();
@@ -106,7 +106,7 @@ function showImageViewer(index){
   };
   const setViewerIndexAfterDelete=async()=>{const current=images[sliderIndex],now=Date.now();current.lastOpenedAt=now;gallery.lastOpenedAt=now;current.history=(current.history||[]).concat({openedAt:now}).slice(-10);gallery.history=(gallery.history||[]).concat({imageId:current.id,imageName:current.name||'Image',openedAt:now}).slice(-10);await persist(book);renderGallery();updateViewer()};
   if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);
-  viewerKeyHandler=event=>{if(event.key==='ArrowLeft'){event.preventDefault();setViewerIndex(sliderIndex-1,-1)}else if(event.key==='ArrowRight'){event.preventDefault();setViewerIndex(sliderIndex+1,1)}else if(event.key==='Escape'){if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;closeModal();if(document.fullscreenElement)document.exitFullscreen?.().catch?.(()=>{})}};
+  viewerKeyHandler=event=>{if(event.key==='ArrowLeft'){event.preventDefault();setViewerIndex(sliderIndex-1,-1)}else if(event.key==='ArrowRight'){event.preventDefault();setViewerIndex(sliderIndex+1,1)}else if(event.key==='Escape'){if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;clearImageTranslationOverlay();closeModal();if(document.fullscreenElement)document.exitFullscreen?.().catch?.(()=>{})}};
   document.addEventListener('keydown',viewerKeyHandler);
   const stage=$('imageViewerStage');
   const wrap=$('imageViewerImageWrap');
@@ -142,7 +142,7 @@ function showImageViewer(index){
    if(activePointers.size===1){const p=[...activePointers.values()][0];dragState={x:p.x,y:p.y,lastX:p.x,lastY:p.y,moved:false,zoom:viewerZoom}}
   };
   wrap?.addEventListener('pointerup',finishPointer);wrap?.addEventListener('pointercancel',event=>{activePointers.delete(event.pointerId);dragState=null;pinchStart=0});
-  $('modalClose').addEventListener('click',()=>{if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;if(document.fullscreenElement)document.exitFullscreen?.().catch?.(()=>{})},{once:true});
+  $('modalClose').addEventListener('click',()=>{clearImageTranslationOverlay();if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;if(document.fullscreenElement)document.exitFullscreen?.().catch?.(()=>{})},{once:true});
  });
 }
 function showGalleryHistory(){
