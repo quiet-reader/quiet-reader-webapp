@@ -412,10 +412,11 @@ export async function startAutoRead(){
  updateAutoReadControls();
  scheduleAutoRead();
 }
-export function isAutoReadSpeaking(){return autoReadRunning&&!autoReadPaused&&Boolean($('ttsEnabled')?.checked)}
+export function isAutoReadSpeaking(){if(!autoReadRunning||autoReadPaused||!$('ttsEnabled')?.checked||!currentUtterance)return false;return currentUtterance.kokoro?Boolean(currentUtterance.playing):Boolean(ttsSupported()&&window.speechSynthesis.speaking)}
 export function pauseAutoRead(){
  if(!autoReadRunning)return;
  autoReadPaused=true;
+ $('readingBody')?.querySelectorAll('.read-from-here-hover').forEach(node=>node.classList.remove('read-from-here-hover'));
  clearTimeout(autoReadTimer);
  if(ttsSupported())window.speechSynthesis.pause();
  pauseKokoro();
@@ -444,7 +445,7 @@ export function setTTSSpeechSpeed(){
 export function setTTSEnabled(){
  const enabled=$('ttsEnabled')?.checked;
  $('ttsSpeechSpeedControl')?.classList.toggle('hidden',!enabled);
- if(!enabled){cancelSpeech();setTTSStatus('TTS off · focus mode remains available')}
+ if(!enabled){cancelSpeech();$('readingBody')?.querySelectorAll('.read-from-here-hover').forEach(node=>node.classList.remove('read-from-here-hover'));setTTSStatus('TTS off · focus mode remains available')}
  else{loadTTSVoices();setTTSStatus('TTS enabled');}
  if(autoReadRunning&&!autoReadPaused){cancelSpeech();scheduleAutoRead()}
 }
