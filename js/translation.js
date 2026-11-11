@@ -52,14 +52,14 @@ function translationMarkup(text){
  $('chapterFormatControls').querySelectorAll('[data-chapter-format]').forEach(button=>button.disabled=true);
 }
 function updateControls(){
- const active=translated.bookId===state.book?.id&&translated.chapter===state.chapter&&typeof translated.text==='string';
+ const active=translated.bookId===state.book?.id&&translated.chapter===state.chapter&&translated.originalText===state.book?.chapters?.[state.chapter]?.text&&typeof translated.text==='string';
  const show=$('restoreTranslation'),copy=$('copyTranslatedChapter');
  if(show)show.classList.toggle('hidden',!active);
  if(copy)copy.classList.toggle('hidden',!active);
  const button=$('translateChapter');if(button){button.textContent=active?'Translated':'Translate page';button.disabled=false}
 }
 export function restoreOriginalChapter(){
- if(translated.bookId!==state.book?.id||translated.chapter!==state.chapter)return;
+ if(translated.bookId!==state.book?.id||translated.chapter!==state.chapter||translated.originalText!==state.book?.chapters?.[state.chapter]?.text)return;
  translated={bookId:null,chapter:null,text:null};
  const c=state.book.chapters[state.chapter];$('readingBody').innerHTML=chapterHTML(c);
  $('chapterFormatControls').querySelectorAll('[data-chapter-format]').forEach(button=>button.disabled=false);
@@ -114,7 +114,7 @@ export function openTranslatePage(){
     const safeText=original.replace(/\[IMAGE:[^\]]+\]/g,token=>{const marker='QRIMAGEPLACEHOLDER'+protectedTokens.length+'TOKEN';protectedTokens.push([marker,token]);return marker});
     let result=await translateWith(source,safeText,target);
     for(const [marker,token] of protectedTokens)result=result.replaceAll(marker,token);
-    translated={bookId:state.book.id,chapter:state.chapter,text:result};
+    translated={bookId:state.book.id,chapter:state.chapter,originalText:original,text:result};
     translationMarkup(result);updateControls();closeModal();toast('Chapter translated');
    }catch(error){$('trProgress').textContent=error.message;$('trStart').disabled=false}
   };
