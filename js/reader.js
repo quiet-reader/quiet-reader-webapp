@@ -190,13 +190,13 @@ function splitSpeechSentences(text){
 function rebuildKokoroSentenceUnits(){
  kokoroSentenceUnits=[];
  autoReadNodes().forEach((node,nodeIndex)=>{
-  splitSpeechSentences(node.innerText||'').forEach(text=>kokoroSentenceUnits.push({text,nodeIndex}));
+  const source=node.innerText||'';let cursor=0;
+  splitSpeechSentences(source).forEach(text=>{let at=source.indexOf(text,cursor);if(at<0)at=cursor;kokoroSentenceUnits.push({text,nodeIndex,charStart:at});cursor=at+text.length});
  });
- kokoroSentenceIndex=kokoroSentenceUnits.findIndex(unit=>unit.nodeIndex>=autoReadIndex);
- if(kokoroSentenceIndex<0)kokoroSentenceIndex=0;
- while(kokoroSentenceIndex<kokoroSentenceUnits.length&&kokoroSentenceUnits[kokoroSentenceIndex].nodeIndex===autoReadIndex&&autoReadCharOffset>=kokoroSentenceUnits[kokoroSentenceIndex].text.length){autoReadCharOffset-=kokoroSentenceUnits[kokoroSentenceIndex].text.length;kokoroSentenceIndex++}
- const unit=kokoroSentenceUnits[kokoroSentenceIndex];if(unit&&unit.nodeIndex===autoReadIndex&&autoReadCharOffset>0){unit.text=unit.text.slice(autoReadCharOffset);autoReadCharOffset=0}
- if(unit)autoReadIndex=unit.nodeIndex;
+ kokoroSentenceIndex=kokoroSentenceUnits.findIndex(unit=>unit.nodeIndex>autoReadIndex||(unit.nodeIndex===autoReadIndex&&unit.charStart+unit.text.length>autoReadCharOffset));
+ if(kokoroSentenceIndex<0)kokoroSentenceIndex=kokoroSentenceUnits.length;
+ const unit=kokoroSentenceUnits[kokoroSentenceIndex];
+ if(unit){autoReadIndex=unit.nodeIndex;const skip=Math.max(0,autoReadCharOffset-unit.charStart);if(skip>0){unit.text=unit.text.slice(skip);unit.charStart+=skip}autoReadCharOffset=unit.charStart}
 }
 function clearKokoroQueue(){kokoroQueueEpoch++;kokoroQueue.clear();kokoroQueueWorker=false;stopKokoro()}
 function fillKokoroQueue(){
@@ -325,7 +325,7 @@ function speakCurrentKokoroSentence(){
   if(currentUtterance!==marker||!autoReadRunning||autoReadPaused)return;
   if(!audio)throw new Error('No buffered audio for this sentence');
   marker.playing=true;
-  playKokoroAudio(audio,{onStatus:setTTSStatus,onProgress:seconds=>{if(currentUtterance!==marker)return;const ratio=Math.max(0,Math.min(0.999,seconds/Math.max(0.01,audio.audioSeconds||audio.samples.length/(audio.sampleRate||24000))));autoReadCharOffset=Math.floor(unit.text.length*ratio);saveAutoReadCursor()}}).then(()=>{
+  playKokoroAudio(audio,{onStatus:setTTSStatus,onProgress:seconds=>{if(currentUtterance!==marker)return;const ratio=Math.max(0,Math.min(0.999,seconds/Math.max(0.01,audio.audioSeconds||audio.samples.length/(audio.sampleRate||24000))));autoReadCharOffset=unit.charStart+Math.floor(unit.text.length*ratio);saveAutoReadCursor()}}).then(()=>{
    if(currentUtterance!==marker)return;
    currentUtterance=null;
    if(autoReadRunning&&!autoReadPaused){
