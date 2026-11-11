@@ -134,6 +134,7 @@ export function renderChapterFormat(mode=chapterFormat){
  const hasText=Boolean(chapter?.text?.trim());
  controls.classList.toggle('hidden',!hasText);
  view.classList.add('hidden');view.innerHTML='';
+ $('readingBody')?.classList.toggle('hidden',chapterFormat==='sections'&&hasText);
  controls.querySelectorAll('[data-chapter-format]').forEach(b=>b.classList.toggle('active',b.dataset.chapterFormat===chapterFormat));
  if(!hasText){chapterFormat='normal';return}
  if(chapterFormat!=='sections')return;
@@ -260,6 +261,14 @@ function cancelSpeech(){
  stopKokoro();
  currentUtterance=null;
 }
+function clearAutoReadSentence(){ $('readingBody')?.querySelectorAll('.auto-read-sentence').forEach(node=>{const parent=node.parentNode;if(!parent)return;while(node.firstChild)parent.insertBefore(node.firstChild,node);parent.removeChild(node);parent.normalize()}) }
+function highlightAutoReadSentence(text){
+ clearAutoReadSentence();const node=autoReadNodes()[autoReadIndex];if(!node||!text)return;
+ const source=node.textContent||'';let at=source.indexOf(text);if(at<0){const normalized=text.trim();at=source.indexOf(normalized);if(at<0)return;text=normalized;}
+ const point=(offset)=>{const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let current,remaining=offset;while((current=walker.nextNode())){if(remaining<=current.nodeValue.length)return{node:current,offset:remaining};remaining-=current.nodeValue.length}return null};
+ const start=point(at),end=point(at+text.length);if(!start||!end)return;
+ const range=document.createRange();range.setStart(start.node,start.offset);range.setEnd(end.node,end.offset);const span=document.createElement('span');span.className='auto-read-sentence';try{span.append(range.extractContents());range.insertNode(span)}catch{}
+}
 function highlightAutoReadParagraph(){
  const nodes=autoReadNodes();
  nodes.forEach((node,i)=>node.classList.toggle('focus-current',i===autoReadIndex));
@@ -287,6 +296,7 @@ function speakCurrentParagraph(){
  if(voice)utterance.voice=voice;
  utterance.rate=ttsSpeechRate();
  utterance.onstart=()=>setTTSStatus('Speaking'+(voice?.localService?' · Local':''));
+ utterance.onboundary=event=>{if(currentUtterance!==utterance||!Number.isFinite(event.charIndex))return;const source=utterance.text||'';let start=0,end=source.length;const before=source.slice(0,event.charIndex);const last=Math.max(before.lastIndexOf('.'),before.lastIndexOf('!'),before.lastIndexOf('?'),before.lastIndexOf('。'),before.lastIndexOf('！'),before.lastIndexOf('？'));if(last>=0)start=last+1;const tail=source.slice(event.charIndex);const stops=[tail.indexOf('.'),tail.indexOf('!'),tail.indexOf('?'),tail.indexOf('。'),tail.indexOf('！'),tail.indexOf('？')].filter(x=>x>=0);if(stops.length)end=event.charIndex+Math.min(...stops)+1;highlightAutoReadSentence(source.slice(start,end).trim())};
  utterance.onend=()=>{if(currentUtterance!==utterance)return;currentUtterance=null;if(autoReadRunning&&!autoReadPaused)advanceAutoRead()};
  utterance.onerror=event=>{if(currentUtterance!==utterance)return;currentUtterance=null;setTTSStatus('Speech error · continuing focus mode');if(autoReadRunning&&!autoReadPaused){const chars=(node.innerText||'').length;const delay=Math.max(800,Math.min(60000,chars/autoReadCharsPerMinute(Number($('autoReadSpeed')?.value||55))*60000));autoReadTimer=setTimeout(advanceAutoRead,delay)}};
  currentUtterance=utterance;
@@ -298,7 +308,7 @@ function speakCurrentKokoroSentence(){
  const unit=kokoroSentenceUnits[kokoroSentenceIndex];
  if(!unit){finishKokoroChapter();return}
  autoReadIndex=unit.nodeIndex;
- highlightAutoReadParagraph();
+ highlightAutoReadParagraph();highlightAutoReadSentence(unit.text);
  const marker={kokoro:true,playing:false,sentenceIndex:kokoroSentenceIndex};
  currentUtterance=marker;
  fillKokoroQueue();
@@ -410,7 +420,7 @@ export function stopAutoRead(showToast=true){
  autoReadPaused=false;
  autoReadIndex=0;
  kokoroSentenceIndex=0;kokoroSentenceUnits=[];
- $('readingBody')?.classList.remove('focus-active');
+ $('readingBody')?.classList.remove('focus-active');clearAutoReadSentence();
  $('readingBody')?.querySelectorAll('.focus-current').forEach(node=>node.classList.remove('focus-current'));
  updateAutoReadControls();
  setTTSStatus('Ready');
