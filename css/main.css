@@ -118,7 +118,7 @@ body:has(#drawer.open) #menuBtn{background:var(--panel2);border-color:var(--acce
 
 
 /* Library shelf hierarchy, layout modes and tag colors */
-.library-heading{margin-bottom:0;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.library-heading{margin-bottom:0;padding-bottom:18px;border-bottom:0}
 .library-heading .heading-row{margin-bottom:0}
 .library-actions-bar{padding:13px 0 15px;border-bottom:1px solid color-mix(in srgb,var(--line) 65%,transparent);background:color-mix(in srgb,var(--panel) 48%,var(--bg));margin:0 -18px;padding-left:18px;padding-right:18px}
 .library-actions{justify-content:flex-start}
