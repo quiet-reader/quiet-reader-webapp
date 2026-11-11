@@ -138,4 +138,6 @@ export function openTranslatePage(){
   };
  });
 }
+export async function translateImageText(text,sourceId){const source=sources().find(item=>item.id===sourceId);if(!source)throw new Error('Choose a translation source first.');if(source.type==='omni')throw new Error('OmniTranslate manual handoff is not supported for image overlays. Choose an API source.');return translateWith(source,text,'en')}
+export function getImageTranslationSources(){return sources().filter(source=>source.type!=='omni').map(({id,name,type})=>({id,name,type}))}
 export function syncTranslationControls(){updateControls()}
