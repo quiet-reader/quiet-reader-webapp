@@ -316,7 +316,7 @@ function speakCurrentKokoroSentence(){
  if(!autoReadRunning||autoReadPaused)return;
  const unit=kokoroSentenceUnits[kokoroSentenceIndex];
  if(!unit){finishKokoroChapter();return}
- autoReadIndex=unit.nodeIndex;
+ autoReadIndex=unit.nodeIndex;autoReadCharOffset=unit.charStart;
  highlightAutoReadParagraph();highlightAutoReadSentence(unit.text);
  const marker={kokoro:true,playing:false,sentenceIndex:kokoroSentenceIndex};
  currentUtterance=marker;
