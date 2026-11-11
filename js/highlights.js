@@ -1,11 +1,14 @@
 import {state} from './state.js';import {put} from './db.js';import {$,esc,toast,modal} from './utils.js';import {openReader} from './reader.js';
-function textOffset(root,target,offset){const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let total=0,node;while((node=walker.nextNode())){if(node===target)return total+Math.max(0,Math.min(offset,node.nodeValue.length));total+=node.nodeValue.length}return total}
+function textOffset(root,target,offset){
+ const range=document.createRange();
+ try{range.selectNodeContents(root);range.setEnd(target,offset);return range.toString().length}catch{return 0}
+}
 export function hideSelectionToolbar(){const bar=$('selectionToolbar');if(bar)bar.classList.add('hidden')}
 export function positionSelectionToolbar(){const bar=$('selectionToolbar'),selection=getSelection(),root=$('readingBody');if(!bar||!selection||selection.isCollapsed||!selection.rangeCount||!root)return hideSelectionToolbar();const range=selection.getRangeAt(0);if(!root.contains(range.commonAncestorContainer)||!selection.toString().trim())return hideSelectionToolbar();const rect=range.getBoundingClientRect(),novelName=$('selectionNovelName');if(novelName)novelName.textContent=state.book?.title||'';bar.classList.remove('hidden');const width=bar.offsetWidth,height=bar.offsetHeight;let left=rect.left+rect.width/2;left=Math.max(width/2+10,Math.min(innerWidth-width/2-10,left));let top=rect.top-height-12;if(top<8)top=Math.min(innerHeight-height-8,rect.bottom+12);bar.style.left=left+'px';bar.style.top=Math.max(8,top)+'px'}
 export async function addHighlight(color='yellow'){
  const selection=getSelection(),root=$('readingBody');if(!selection||selection.isCollapsed||!selection.rangeCount||!state.book||!root)return toast('Select text inside an open chapter');const range=selection.getRangeAt(0);if(!root.contains(range.commonAncestorContainer))return toast('Select text inside the chapter');const raw=selection.toString(),quote=raw.trim();if(!quote)return toast('Select some text first');const leading=raw.length-raw.trimStart().length,start=textOffset(root,range.startContainer,range.startOffset)+leading,end=start+quote.length;
  state.book.highlights=state.book.highlights||[];state.book.highlights.push({id:crypto.randomUUID?.()||String(Date.now())+Math.random(),chapter:state.chapter,text:quote,start,end,color,note:'',locked:false,created:Date.now()});
- try{await put(state.book);selection.removeAllRanges();hideSelectionToolbar();renderHighlights();toast('Highlight saved')}catch(error){console.error(error);toast('Could not save highlight')}
+ try{await put(state.book);selection?.removeAllRanges();hideSelectionToolbar();renderHighlights();toast('Highlight saved')}catch(error){console.error(error);toast('Could not save highlight')}
 }
 export function renderHighlights(){
  const root=$('readingBody');if(!root||!state.book)return;
@@ -13,7 +16,13 @@ export function renderHighlights(){
  const saved=(state.book.highlights||[]).filter(m=>Number(m.chapter)===Number(state.chapter)&&m.text);if(!saved.length)return;
  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];let total=0,node;while((node=walker.nextNode())){const start=total;total+=node.nodeValue.length;nodes.push({node,start,end:total})}
  const fullText=nodes.map(x=>x.node.nodeValue).join('');
- const ranges=saved.map(m=>{let start=Number(m.start),end=Number(m.end);if(!Number.isInteger(start)||!Number.isInteger(end)||end<=start||fullText.slice(start,end)!==m.text){const found=fullText.indexOf(m.text);if(found<0)return null;start=found;end=found+m.text.length}return {...m,start,end}}).filter(Boolean);
+ const normalizeWithMap=value=>{let out='',map=[];for(let i=0;i<value.length;i++){const c=value[i];if(/\\s/.test(c)){if(!out.endsWith(' ')){out+=' ';map.push(i)}}else{out+=c;map.push(i)}}return {text:out,map}};
+ const normalized=normalizeWithMap(fullText);
+ const ranges=saved.map(m=>{let start=Number(m.start),end=Number(m.end);if(!Number.isInteger(start)||!Number.isInteger(end)||end<=start||fullText.slice(start,end)!==m.text){
+   let found=fullText.indexOf(m.text);
+   if(found<0){const quote=String(m.text).replace(/\\s+/g,' ').trim(),at=normalized.text.indexOf(quote);if(at<0)return null;start=normalized.map[at];end=normalized.map[at+quote.length-1]+1}
+   else{start=found;end=found+m.text.length}
+  }return {...m,start,end}}).filter(Boolean);
  // Build each original text node from immutable offsets. This avoids splitText offset drift
  // when a highlight starts and ends inside the same text node or overlaps another mark.
  for(const item of nodes){if(!item.node.isConnected)continue;const value=item.node.nodeValue,overlaps=ranges.filter(m=>m.end>item.start&&m.start<item.end);if(!overlaps.length)continue;const cuts=[item.start,item.end,...overlaps.flatMap(m=>[Math.max(item.start,m.start),Math.min(item.end,m.end)])].sort((a,b)=>a-b).filter((v,i,a)=>i===0||v!==a[i-1]);const fragment=document.createDocumentFragment();for(let i=0;i<cuts.length-1;i++){const from=cuts[i],to=cuts[i+1];if(to<=from)continue;const chosen=overlaps.filter(m=>m.start<=from&&m.end>=to).sort((a,b)=>(b.created||0)-(a.created||0))[0];const textNode=document.createTextNode(value.slice(from-item.start,to-item.start));if(chosen){const mark=document.createElement('mark');mark.dataset.highlight=chosen.id;mark.dataset.color=chosen.color||'yellow';mark.append(textNode);fragment.append(mark)}else fragment.append(textNode)}item.node.replaceWith(fragment)}
