@@ -43,7 +43,7 @@ export async function importGalleryFiles(fileList){
  const gallery=ensureGallery(book);let added=0;
  for(const file of files){try{gallery.images.push({id:uid(),name:(file.webkitRelativePath||file.name).split('/').pop(),data:await dataURL(file),mime:file.type||'application/octet-stream',size:file.size,addedAt:Date.now(),lastOpenedAt:null,notes:'',locked:false,history:[]});added++}catch(error){console.warn('Could not import gallery image',file.name,error)}}
  if(!book.cover&&gallery.images[0])book.cover=gallery.images[0].data;
- await persist(book);await refresh();drawBook();setBookTab('gallery');renderGallery();
+ addEditEvent(book,'Gallery images added',added+' images');await persist(book);await refresh();drawBook();setBookTab('gallery');renderGallery();
  toast(added+' image'+(added===1?'':'s')+' added'+(added<files.length?' · '+(files.length-added)+' failed':''));
 }
 async function copyImage(image){
@@ -97,7 +97,7 @@ function showImageViewer(index){
    if(event.target.closest('#copyViewerImage')){await copyImage(current);return}
    if(event.target.closest('#saveGalleryImageNote')){current.notes=$('galleryImageNotes').value;await persist(book);toast('Image note saved');return}
    if(event.target.closest('#toggleImageLock')){current.locked=!current.locked;await persist(book);updateViewer();renderGallery();toast(current.locked?'Image locked':'Image unlocked');return}
-   if(event.target.closest('#deleteViewerImage')){if(current.locked||book.locked)return toast('Unlock this image and gallery before deleting');if(!confirm('Delete this image from the gallery?'))return;images.splice(sliderIndex,1);await persist(book);if(!images.length){if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;closeModal();renderGallery();toast('Image deleted');return}sliderIndex=Math.min(sliderIndex,images.length-1);viewerZoom=1;panX=0;panY=0;await setViewerIndexAfterDelete()}
+   if(event.target.closest('#deleteViewerImage')){if(current.locked||book.locked)return toast('Unlock this image and gallery before deleting');if(!confirm('Delete this image from the gallery?'))return;images.splice(sliderIndex,1);addEditEvent(book,'Gallery image deleted',current.name||'Image');await persist(book);if(!images.length){if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;closeModal();renderGallery();toast('Image deleted');return}sliderIndex=Math.min(sliderIndex,images.length-1);viewerZoom=1;panX=0;panY=0;await setViewerIndexAfterDelete()}
   };
   const setViewerIndexAfterDelete=async()=>{const current=images[sliderIndex],now=Date.now();current.lastOpenedAt=now;gallery.lastOpenedAt=now;current.history=(current.history||[]).concat({openedAt:now}).slice(-10);gallery.history=(gallery.history||[]).concat({imageId:current.id,imageName:current.name||'Image',openedAt:now}).slice(-10);await persist(book);renderGallery();updateViewer()};
   if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);
