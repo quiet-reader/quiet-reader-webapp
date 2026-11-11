@@ -45,6 +45,9 @@ async function externalizeItem(item,archive,records,nextAsset){
    if(typeof image.data==='string'&&image.data.startsWith('data:image/'))image.data=await addAsset(image.data);
   }
  }
+ for(const image of copy.gallery?.images||[]){
+  if(typeof image.data==='string'&&image.data.startsWith('data:image/'))image.data=await addAsset(image.data);
+ }
  return copy;
 }
 async function writeJson(archive,records,path,value,role){
