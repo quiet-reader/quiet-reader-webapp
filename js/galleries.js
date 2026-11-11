@@ -7,9 +7,9 @@ let sliderIndex=0;
 const imageFiles=files=>[...files].filter(file=>file.type?.startsWith('image/')||/\.(png|jpe?g|gif|webp|avif|svg|bmp)$/i.test(file.name)).sort((a,b)=>new Intl.Collator(undefined,{numeric:true,sensitivity:'base'}).compare(a.webkitRelativePath||a.name,b.webkitRelativePath||b.name));
 const dateTime=value=>Number.isFinite(Number(value))&&Number(value)>0?new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(new Date(Number(value))):'Not opened yet';
 function ensureGallery(book){
- book.gallery=book.gallery||{images:[],view:'grid',history:[]};
+ book.gallery=book.gallery||{images:[],view:'grid',history:[],createdAt:Date.now(),lastOpenedAt:null};
  book.gallery.images=book.gallery.images||[];
- book.gallery.history=book.gallery.history||[];
+ book.gallery.history=book.gallery.history||[];if(!book.gallery.createdAt)book.gallery.createdAt=book.createdAt||book.updated||Date.now();
  for(const image of book.gallery.images){if(!image.id)image.id=uid();if(!image.addedAt)image.addedAt=book.createdAt||book.updated||Date.now();if(!Array.isArray(image.history))image.history=[]}
  return book.gallery;
 }
@@ -27,7 +27,7 @@ export function createGallery(){
    const book=freshBook('gallery',$('newGalleryTitle').value.trim()||'Untitled gallery');
    book.author=$('newGalleryAuthor').value.trim();
    book.tags=[...new Set($('newGalleryTags').value.split(',').map(tag=>tag.trim().replace(/^#/,'')).filter(Boolean))];
-   book.gallery={images:[],view:'grid',history:[]};
+   book.gallery={images:[],view:'grid',history:[],createdAt:Date.now(),lastOpenedAt:null};
    for(const file of selectedFiles){try{book.gallery.images.push({id:uid(),name:(file.webkitRelativePath||file.name).split('/').pop(),data:await dataURL(file),mime:file.type||'application/octet-stream',size:file.size,addedAt:Date.now(),lastOpenedAt:null,notes:'',locked:false,history:[]})}catch(error){console.warn('Could not import gallery image',file.name,error)}}
    if(book.gallery.images[0])book.cover=book.gallery.images[0].data;
    await put(book);await refresh();closeModal();openBook(book.id);setBookTab('gallery');renderGallery();toast('Gallery created · '+book.gallery.images.length+' images');
@@ -88,15 +88,16 @@ function showGalleryHistory(){
 export function renderGallery(){
  const book=state.book,host=$('galleryContent');if(!host||!book)return;
  const gallery=ensureGallery(book),images=gallery.images,view=gallery.view==='slider'?'slider':'grid';
- host.innerHTML='<div class="gallery-toolbar"><div class="row wrap"><button type="button" data-gallery-view="grid" class="'+(view==='grid'?'active':'')+'">▦ Grid</button><button type="button" data-gallery-view="slider" class="'+(view==='slider'?'active':'')+'">▣ Slideshow</button><span class="muted tiny">'+images.length+' image'+(images.length===1?'':'s')+'</span><button type="button" data-gallery-history>◷ History</button><span class="grow"></span><button type="button" data-gallery-add '+(book.locked?'disabled':'')+'>＋ Add images</button><button type="button" data-gallery-folder '+(book.locked?'disabled':'')+'>＋ Add folder</button></div></div><div class="gallery-lock-note">'+(book.locked?'🔒 This gallery is locked. Unlock editing to change images or notes.':'Gallery unlocked · individual images can also be locked')+'</div>';
+ host.innerHTML='<div class="gallery-overview tiny muted">Gallery added '+esc(dateTime(gallery.createdAt))+' · Last opened '+esc(dateTime(gallery.lastOpenedAt))+'</div><div class="gallery-toolbar"><div class="row wrap"><button type="button" data-gallery-view="grid" class="'+(view==='grid'?'active':'')+'">▦ Grid</button><button type="button" data-gallery-view="slider" class="'+(view==='slider'?'active':'')+'">▣ Slideshow</button><span class="muted tiny">'+images.length+' image'+(images.length===1?'':'s')+'</span><button type="button" data-gallery-history>◷ History</button><span class="grow"></span><button type="button" data-gallery-add '+(book.locked?'disabled':'')+'>＋ Add images</button><button type="button" data-gallery-folder '+(book.locked?'disabled':'')+'>＋ Add folder</button></div></div><div class="gallery-lock-note">'+(book.locked?'🔒 This gallery is locked. Unlock editing to change images or notes.':'Gallery unlocked · individual images can also be locked')+'</div>';
  host.onclick=async event=>{
   const viewButton=event.target.closest('[data-gallery-view]');
   if(viewButton){gallery.view=viewButton.dataset.galleryView;await persist(book);renderGallery();return}
   if(event.target.closest('[data-gallery-add]')){addGalleryImages();return}
   if(event.target.closest('[data-gallery-folder]')){addGalleryFolder();return}
   if(event.target.closest('[data-gallery-history]')){showGalleryHistory();return}
+  const slideTarget=event.target.closest('[data-gallery-slide-index]');if(slideTarget){sliderIndex=Number(slideTarget.dataset.gallerySlideIndex);renderGallery();return}
   const copy=event.target.closest('[data-gallery-copy]');if(copy){await copyImage(images[Number(copy.dataset.galleryCopy)]);return}
-  const card=event.target.closest('[data-gallery-image]');if(card){await openImage(Number(card.dataset.galleryImage));return}
+  const card=event.target.closest('[data-gallery-image]');if(card){if(event.target.closest('details,textarea,summary,[data-gallery-copy]'))return;await openImage(Number(card.dataset.galleryImage));return}
   if(event.target.closest('[data-gallery-prev]')){sliderIndex=Math.max(0,sliderIndex-1);renderGallery();return}
   if(event.target.closest('[data-gallery-next]')){sliderIndex=Math.min(images.length-1,sliderIndex+1);renderGallery();return}
  };
@@ -113,6 +114,5 @@ export function renderGallery(){
   const image=images[sliderIndex],prev=images[sliderIndex-1],next=images[sliderIndex+1];
   host.innerHTML+='<div class="gallery-stage">'+(prev?'<button type="button" class="gallery-neighbor previous" data-gallery-prev><img src="'+prev.data+'" alt=""><span>‹</span></button>':'<span class="gallery-neighbor-spacer"></span>')+'<button type="button" class="gallery-slide-main" data-gallery-image="'+sliderIndex+'"><img src="'+image.data+'" alt="'+esc(image.name||'Gallery image')+'"><span class="gallery-slide-caption">'+esc(image.name||'Image')+' · '+(sliderIndex+1)+' of '+images.length+'</span></button>'+(next?'<button type="button" class="gallery-neighbor next" data-gallery-next><img src="'+next.data+'" alt=""><span>›</span></button>':'<span class="gallery-neighbor-spacer"></span>')+'</div><div class="gallery-filmstrip">'+images.map((item,i)=>'<button type="button" data-gallery-slide-index="'+i+'" class="'+(i===sliderIndex?'active':'')+'"><img src="'+item.data+'" alt=""><span>'+(i+1)+'</span></button>').join('')+'</div><div class="gallery-slide-position">'+(sliderIndex+1)+' of '+images.length+' images · '+esc(image.name||'')+'</div>';
  }
- const slide=event=>{const target=event.target.closest('[data-gallery-slide-index]');if(!target)return;sliderIndex=Number(target.dataset.gallerySlideIndex);renderGallery()};
- host.addEventListener('click',slide,{once:true});
+
 }
