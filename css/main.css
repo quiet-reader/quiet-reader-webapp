@@ -681,3 +681,16 @@ select:focus{animation:select-focus-in .2s ease both}
 
 /* Keep translated text compact and translucent so the source image remains visible. */
 .image-translation-result{left:clamp(6px,1.5vw,16px)!important;right:clamp(6px,1.5vw,16px)!important;bottom:clamp(6px,1.5vh,12px)!important;max-height:20%!important;padding:7px 10px!important;border-color:#ffffff38!important;background:rgba(255,255,255,.78)!important;color:#171717!important;font-size:clamp(12px,1.35vw,15px)!important;line-height:1.4!important;box-shadow:0 1px 7px #0002!important;backdrop-filter:blur(2px)}
+
+
+/* Translation is a collapsible section below the image, never over the artwork. */
+.image-translation-overlay{display:none!important}
+.image-translation-panel{flex:0 0 auto;width:min(900px,100%);max-width:100%;margin:0 auto 5px;padding:0 8px;box-sizing:border-box;max-height:34vh;overflow:auto;overscroll-behavior:contain}
+.image-translation-panel[hidden]{display:none!important}
+.image-translation-details{border:1px solid #ffffff2b;border-radius:9px;background:#ffffff0b;color:#eee;overflow:hidden}
+.image-translation-details>summary{padding:7px 11px;cursor:pointer;list-style:none;font-size:12px;color:#ddd}
+.image-translation-details>summary::-webkit-details-marker{display:none}
+.image-translation-details>summary:after{content:'＋';float:right;color:#aaa}
+.image-translation-details[open]>summary:after{content:'−'}
+.image-translation-result{position:static!important;max-height:none!important;overflow:visible!important;margin:0!important;padding:9px 11px!important;border:0!important;border-top:1px solid #ffffff20!important;border-radius:0!important;background:rgba(255,255,255,.08)!important;color:#eee!important;font:400 13px/1.55 Arial,sans-serif!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important;box-shadow:none!important;backdrop-filter:none!important}
+@media(max-width:650px){.image-translation-panel{max-height:28vh;padding:0 5px}.image-translation-details>summary{padding:6px 9px}.image-translation-result{font-size:12px!important;padding:8px 9px!important}}
