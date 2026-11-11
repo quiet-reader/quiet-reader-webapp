@@ -8,15 +8,23 @@ export function clearImageTranslationOverlay(imageId){
  const root=$('imageTranslationOverlay');if(root)root.replaceChildren();
 }
 export function renderImageTranslationOverlay(image){
- const root=$('imageTranslationOverlay');if(!root)return;
+ const root=$('imageTranslationPanel');
+ if(!root)return;
  const text=overlays.get(image?.id)||'';
  root.replaceChildren();
+ root.hidden=!text;
  if(!text)return;
- const panel=document.createElement('div');
- panel.className='image-translation-result';
- panel.setAttribute('role','status');
- panel.textContent=text;
- root.append(panel);
+ const details=document.createElement('details');
+ details.className='image-translation-details';
+ details.open=false;
+ const summary=document.createElement('summary');
+ summary.textContent='English translation · Expand';
+ const content=document.createElement('div');
+ content.className='image-translation-result';
+ content.textContent=text;
+ details.append(summary,content);
+ summary.addEventListener('click',()=>{summary.textContent=details.open?'English translation · Collapse':'English translation · Expand'});
+ root.append(details);
 }
 async function prepareOcrImage(data){
  const source=new Image();
@@ -37,14 +45,11 @@ async function prepareOcrImage(data){
  context.putImageData(pixels,0,0);
  return canvas;
 }
-function cleanOcrLines(lines,language){
+function cleanOcrLines(lines){
  const seen=new Set(),clean=[];
  for(const line of lines){
   const value=String(line.text||'').replace(/\\s+/g,' ').trim();
-  if(!value||Number(line.confidence)<38)continue;
-  const cjk=(value.match(/[\\u3000-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\uac00-\\ud7af]/g)||[]).length;
-  const letters=(value.match(/[\\p{L}\\p{N}]/gu)||[]).length;
-  if(cjk<2||cjk/Math.max(1,letters)<.45)continue;
+  if(!value)continue;
   const key=value.replace(/[\\s，。！？、,.!?]/g,'');
   if(seen.has(key))continue;
   seen.add(key);clean.push(value);
@@ -75,16 +80,16 @@ export function openImageTranslation(image){
    await worker.setParameters({tessedit_pageseg_mode:'11',preserve_interword_spaces:'1'});
    progress.textContent='Recognizing text…';
    const result=await worker.recognize(prepared);
-   const detected=cleanOcrLines(result.data.lines||[],language);
-   if(!detected.length)throw new Error('No reliable text detected. Try a clearer image or check the selected language.');
-   progress.textContent='Translating '+detected.length+' cleaned text lines to English…';
+   const detected=cleanOcrLines(result.data.lines||[]);
+   if(!detected.length)throw new Error('No text detected. Try another language or a clearer image.');
+   progress.textContent='Translating '+detected.length+' detected text lines to English…';
    // Chinese and Japanese sentence flow is often split across visual lines.
    // Join adjacent OCR lines so the provider can translate in context.
    const joined=detected.join(language.startsWith('chi')?'':'\n');
    const translated=await translateImageText(joined,sourceId);
    if(!translated.trim())throw new Error('The translation provider returned empty text. Try another source.');
    overlays.set(image.id,translated.trim());
-   dismiss();renderImageTranslationOverlay(image);toast('Image translated · '+detected.length+' text lines');
+   dismiss();renderImageTranslationOverlay(image);toast('Image translated · '+detected.length+' detected lines');
   }catch(error){progress.textContent=error.message||'Image translation failed';button.disabled=false}
  };
 }
