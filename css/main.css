@@ -370,3 +370,26 @@ select:focus{animation:select-focus-in .2s ease both}
 .library-search-mode::before,.library-search-mode::after{content:none!important;display:none!important}
 .library-search-mode .select-popover-wrap{display:flex!important;align-items:stretch!important;align-self:stretch!important;margin:0!important;padding:0!important;border:0!important;outline:0!important;box-shadow:none!important}
 .library-search-mode .select-popover-trigger{align-self:stretch!important;margin:0!important}
+
+
+/* Give the saved-marks search area breathing room below the close control */
+#modalHost:has(#savedMarksSearch) .modal>.row.between{margin-bottom:16px;align-items:flex-start}
+#modalHost:has(#savedMarksSearch) #modalClose{transform:translateY(-3px)}
+
+/* Large, square, stacked appearance choices */
+.appearance-options{display:flex;flex-direction:column;gap:11px;padding-top:3px}
+.appearance-option{width:100%;min-height:94px;display:flex;align-items:center;gap:16px;padding:14px 16px;text-align:left;background:color-mix(in srgb,var(--bg) 52%,var(--panel));border:1px solid var(--line);border-radius:12px}
+.appearance-option:hover:not(:disabled){transform:translateY(-1px);border-color:var(--accent)}
+.appearance-option.active{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--panel));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 35%,transparent)}
+.appearance-swatch{width:62px;height:62px;flex:0 0 62px;border-radius:10px;border:1px solid #ffffff35;box-shadow:0 2px 8px #0003;background:linear-gradient(135deg,var(--swatch-bg) 0 52%,var(--swatch-panel) 52% 100%);position:relative;overflow:hidden}
+.appearance-swatch:after{content:"";position:absolute;left:9px;right:9px;top:15px;height:7px;border-radius:4px;background:var(--swatch-fg);box-shadow:0 13px 0 color-mix(in srgb,var(--swatch-fg) 58%,transparent),0 26px 0 color-mix(in srgb,var(--swatch-fg) 35%,transparent)}
+.appearance-swatch-default{--swatch-bg:#474747;--swatch-panel:#3b3b3b;--swatch-fg:#BABABF}
+.appearance-swatch-dark{--swatch-bg:#171717;--swatch-panel:#303030;--swatch-fg:#eeeeee}
+.appearance-swatch-sepia{--swatch-bg:#F1E4CC;--swatch-panel:#DCC9A9;--swatch-fg:#594633}
+.appearance-swatch-light{--swatch-bg:#ffffff;--swatch-panel:#e8e8e8;--swatch-fg:#292929}
+.appearance-option-copy{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
+.appearance-option-copy b{font-size:15px;color:var(--fg)}
+.appearance-option-copy small{font-size:12px;color:var(--muted)}
+.appearance-option-check{width:25px;height:25px;flex:0 0 25px;display:grid;place-items:center;border-radius:50%;color:var(--accent);font-weight:700}
+.appearance-option.active .appearance-option-check{background:color-mix(in srgb,var(--accent) 18%,transparent)}
+@media(max-width:420px){.appearance-option{min-height:86px;padding:11px 12px;gap:12px}.appearance-swatch{width:56px;height:56px;flex-basis:56px}}
