@@ -8,6 +8,19 @@ const books=()=>state.books||[];
 const title=b=>b?.title||'Untitled novel';
 const chapterTitle=(b,i)=>b?.chapters?.[i]?.title||'Chapter '+(i+1);
 const save=async b=>{b.updated=Date.now();await put(b)};
+async function syncCorrespondingChapters(a,b){
+ const count=Math.min(a.chapters?.length||0,b.chapters?.length||0);
+ // Remove only previously generated automatic pairs for this exact novel pair.
+ for(const chapter of a.chapters||[])chapter.links=(chapter.links||[]).filter(x=>!(x.autoNovelPair&&x.targetBookId===b.id));
+ for(const chapter of b.chapters||[])chapter.links=(chapter.links||[]).filter(x=>!(x.autoNovelPair&&x.targetBookId===a.id));
+ for(let i=0;i<count;i++){
+  a.chapters[i].links=a.chapters[i].links||[];b.chapters[i].links=b.chapters[i].links||[];
+  a.chapters[i].links.push({targetBookId:b.id,targetChapterIndex:i,type:'counterpart',autoNovelPair:true});
+  b.chapters[i].links.push({targetBookId:a.id,targetChapterIndex:i,type:'counterpart',autoNovelPair:true});
+ }
+ await save(a);await save(b);
+ return count;
+}
 const relationLabel=r=>r==='counterpart'?'Alternate / corresponding edition':r==='sequel'?'Sequel':r==='prequel'?'Prequel':r==='next'?'Next chapter':'Previous chapter';
 function novelOptions(selected){return books().map(b=>'<option value="'+esc(b.id)+'" '+(b.id===selected?'selected':'')+'>'+esc(title(b))+'</option>').join('')}
 function chapterOptions(book,selected){return (book?.chapters||[]).map((c,i)=>'<option value="'+i+'" '+(i===Number(selected)?'selected':'')+'>'+esc(chapterTitle(book,i))+'</option>').join('')}
@@ -18,8 +31,8 @@ export function manageNovelLinks(book=state.book){
  const rows=links.map((l,i)=>{const target=books().find(b=>b.id===l.targetBookId);return '<div class="link-record"><span class="link-record-arrow">'+(l.type==='counterpart'?'↔':l.type==='sequel'?'→':'←')+'</span><span class="grow"><b>'+esc(title(target)||'Missing novel')+'</b><small>'+esc(relationLabel(l.type))+'</small></span><button data-remove-novel-link="'+i+'" aria-label="Remove relationship">×</button></div>'}).join('');
  const body='<div class="stack"><p class="muted tiny">Connect this novel to another edition or to a related book in a series. Corresponding editions are linked in both directions; sequel relationships keep their direction.</p><div class="link-record-list">'+(rows||'<p class="muted tiny">No novel relationships yet.</p>')+'</div><hr><label>Related novel<select id="novelLinkTarget">'+novelOptions('')+'</select></label><label>Relationship<select id="novelLinkType"><option value="counterpart">↔ Corresponding / same novel (two-way)</option><option value="sequel">→ This novel is a prequel; selected novel is its sequel</option></select></label><div class="row"><span class="grow"></span><button id="saveNovelLink" class="primary">Add relationship</button></div></div>';
  modal('Novel relationships · '+title(book),body,()=>{
-  $('saveNovelLink').onclick=async()=>{const targetId=$('novelLinkTarget').value,type=$('novelLinkType').value;if(!targetId||targetId===book.id)return toast('Choose another novel');const target=books().find(b=>b.id===targetId);if(!target)return;book.relationships=book.relationships||[];target.relationships=target.relationships||[];book.relationships=book.relationships.filter(x=>x.targetBookId!==targetId);target.relationships=target.relationships.filter(x=>x.targetBookId!==book.id);book.relationships.push({targetBookId:targetId,type});target.relationships.push({targetBookId:book.id,type:type==='counterpart'?'counterpart':'prequel'});await save(book);await save(target);toast('Novel relationship saved');manageNovelLinks(book)};
-  $('modalHost').onclick=async e=>{const btn=e.target.closest('[data-remove-novel-link]');if(!btn)return;const item=book.relationships?.[Number(btn.dataset.removeNovelLink)];if(!item)return;const target=books().find(b=>b.id===item.targetBookId);book.relationships=book.relationships.filter(x=>x.targetBookId!==item.targetBookId);if(target){target.relationships=(target.relationships||[]).filter(x=>x.targetBookId!==book.id);await save(target)}await save(book);manageNovelLinks(book)};
+  $('saveNovelLink').onclick=async()=>{const targetId=$('novelLinkTarget').value,type=$('novelLinkType').value;if(!targetId||targetId===book.id)return toast('Choose another novel');const target=books().find(b=>b.id===targetId);if(!target)return;book.relationships=book.relationships||[];target.relationships=target.relationships||[];book.relationships=book.relationships.filter(x=>x.targetBookId!==targetId);target.relationships=target.relationships.filter(x=>x.targetBookId!==book.id);book.relationships.push({targetBookId:targetId,type});target.relationships.push({targetBookId:book.id,type:type==='counterpart'?'counterpart':'prequel'});if(type==='counterpart'){const count=await syncCorrespondingChapters(book,target);toast('Novel linked; '+count+' matching chapter pair'+(count===1?'':'s')+' created')}else{await save(book);await save(target);toast('Novel relationship saved')}manageNovelLinks(book)};
+  $('modalHost').onclick=async e=>{const btn=e.target.closest('[data-remove-novel-link]');if(!btn)return;const item=book.relationships?.[Number(btn.dataset.removeNovelLink)];if(!item)return;const target=books().find(b=>b.id===item.targetBookId);if(target&&item.type==='counterpart'){for(const c of book.chapters||[])c.links=(c.links||[]).filter(x=>!(x.autoNovelPair&&x.targetBookId===target.id));for(const c of target.chapters||[])c.links=(c.links||[]).filter(x=>!(x.autoNovelPair&&x.targetBookId===book.id));await save(target)}book.relationships=book.relationships.filter(x=>x.targetBookId!==item.targetBookId);if(target){target.relationships=(target.relationships||[]).filter(x=>x.targetBookId!==book.id);await save(target)}await save(book);manageNovelLinks(book)};
  });
 }
 
