@@ -192,3 +192,35 @@ select{transform-origin:top center;transition:background-color .2s ease,border-c
 select:focus{animation:select-focus-in .2s ease both}
 @keyframes select-focus-in{from{filter:brightness(.92)}to{filter:brightness(1)}}
 @media(max-width:650px){.sort-label{width:100%;justify-content:space-between}.sort-label select{flex:1;min-width:0}.novel-stats{align-items:flex-start;flex-direction:column;gap:6px}}
+
+/* Reliable saved-highlight rendering and visible accent-star ratings */
+.reading-body mark[data-highlight]{display:inline;background:var(--highlight-color,#e8d47b)!important;color:#241f13!important;border-radius:3px;padding:0 .04em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.reading-body mark[data-color="yellow"]{--highlight-color:#e8d47b}
+.reading-body mark[data-color="green"]{--highlight-color:#8bc58b}
+.reading-body mark[data-color="blue"]{--highlight-color:#83b8e8}
+.reading-body mark[data-color="pink"]{--highlight-color:#e7a0bd}
+.reading-body mark[data-color="purple"]{--highlight-color:#b9a0e8}
+.novel-stats label:first-child{color:var(--accent)}
+.novel-stats #bookRating{color:var(--accent);font-weight:700}
+.novel-stats #bookRating:disabled{opacity:.78;cursor:not-allowed}
+.book-rating-stars{color:var(--accent);letter-spacing:1px;font-weight:700}
+.tag-choice-list{display:flex;flex-wrap:wrap;gap:8px;max-height:230px;overflow:auto;padding:3px}
+.tag-choice{display:inline-flex;align-items:center;gap:6px;border:1px solid color-mix(in srgb,var(--tag-color) 45%,var(--line));background:color-mix(in srgb,var(--tag-color) 10%,var(--panel));color:var(--fg);border-radius:8px;padding:7px 10px;font-size:12px;transition:background .16s,border-color .16s,transform .16s}
+.tag-choice.selected{background:color-mix(in srgb,var(--tag-color) 24%,var(--panel));border-color:var(--tag-color);color:var(--tag-color);font-weight:700}
+.tag-choice:hover{transform:translateY(-1px);border-color:var(--tag-color)}
+.tag-choice-check{color:var(--tag-color);font-weight:800}
+/* Animated square popup selectors: native selects remain the source of truth */
+.select-popover-wrap{position:relative;display:inline-flex;min-width:0;max-width:100%;vertical-align:middle}
+.select-popover-wrap>select{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;clip-path:inset(50%)!important}
+.select-popover-trigger{display:flex;align-items:center;justify-content:space-between;gap:20px;min-width:0;width:100%;padding:7px 11px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--fg);font-size:13px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.select-popover-trigger::after{content:"";flex:none;width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translateY(-2px);transition:transform .18s}
+.select-popover-trigger[aria-expanded="true"]{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 18%,transparent)}
+.select-popover-trigger[aria-expanded="true"]::after{transform:rotate(225deg) translate(-1px,-1px)}
+.select-popover{position:absolute;z-index:85;top:calc(100% + 7px);left:0;min-width:max(100%,190px);max-width:min(290px,82vw);max-height:280px;overflow:auto;padding:6px;background:var(--panel);border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));border-radius:10px;box-shadow:0 12px 32px #0008;transform-origin:top left;animation:select-pop-in .16s ease both}
+.select-popover.hidden{display:none!important}
+.select-popover button{display:block;width:100%;text-align:left;padding:8px 10px;margin:2px 0;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--fg);font-size:12px;white-space:normal}
+.select-popover button:hover,.select-popover button.active{background:color-mix(in srgb,var(--accent) 16%,var(--panel2));border-color:color-mix(in srgb,var(--accent) 35%,transparent);color:var(--accent)}
+.select-popover button:disabled{opacity:.35}
+@keyframes select-pop-in{from{opacity:0;transform:translateY(-5px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.sort-label .select-popover-wrap{min-width:190px}.tag-filter-label .select-popover-wrap{min-width:150px}.novel-stats .select-popover-wrap{min-width:160px}
+@media(max-width:650px){.select-popover-wrap{max-width:100%}.sort-label .select-popover-wrap{flex:1;min-width:0}}
