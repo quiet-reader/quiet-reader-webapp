@@ -1,5 +1,7 @@
 import {state,freshBook,setScreen} from './state.js';import {getAll,put,remove} from './db.js';import {$,esc,toast,modal} from './utils.js';import {openReader} from './reader.js';
 let currentBookTab='chapters';
+let librarySearchQuery='';
+let librarySearchMode='everything';
 const dateTime=value=>Number.isFinite(Number(value))&&Number(value)>0?new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(new Date(Number(value))):'Date unavailable';
 const defaultTagColors=['#d7c477','#83b8e8','#8bc58b','#e7a0bd','#b9a0e8','#e5a16b','#72c5bd','#d58f8f'];
 function savedTagColors(){try{return JSON.parse(localStorage.getItem('qrTagColors')||'{}')}catch{return {}}}
@@ -9,7 +11,14 @@ export function drawLibrary(){
  const availableTags=[...new Set(state.books.flatMap(b=>Array.isArray(b.tags)?b.tags:[]).map(t=>String(t).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
  const tagSelect=$('tagFilter');
  if(tagSelect){const selected=state.tagFilter||'all';tagSelect.innerHTML='<option value="all">All tags</option>'+availableTags.map(t=>'<option value="'+esc(t)+'">'+esc(t)+'</option>').join('');tagSelect.value=availableTags.includes(selected)?selected:'all';state.tagFilter=tagSelect.value}
- const list=state.books.filter(b=>(state.filter==='all'||b.source===state.filter)&&(state.tagFilter==='all'||(b.tags||[]).includes(state.tagFilter)));const sort=$('librarySort')?.value||localStorage.getItem('qrLibrarySort')||'recent';list.sort((a,b)=>{const chars=x=>(x.chapters||[]).reduce((sum,ch)=>sum+String(ch.text||'').length,0);if(sort==='title')return String(a.title||'').localeCompare(String(b.title||''));if(sort==='rating-asc')return (Number(a.rating)||0)-(Number(b.rating)||0);if(sort==='rating-desc')return (Number(b.rating)||0)-(Number(a.rating)||0);if(sort==='characters-desc')return chars(b)-chars(a);if(sort==='characters-asc')return chars(a)-chars(b);return (b.updated||0)-(a.updated||0)});const grid=$('bookGrid');
+ const query=librarySearchQuery.trim().toLocaleLowerCase();
+ const list=state.books.filter(b=>{
+  if(state.filter!=='all'&&b.source!==state.filter)return false;
+  if(state.tagFilter!=='all'&&!(b.tags||[]).includes(state.tagFilter))return false;
+  if(!query)return true;
+  if(librarySearchMode==='author')return String(b.author||'').toLocaleLowerCase().includes(query);
+  return [b.title,b.author,...(b.chapters||[]).flatMap(ch=>[ch.title,ch.text])].some(value=>String(value||'').toLocaleLowerCase().includes(query));
+ });const sort=$('librarySort')?.value||localStorage.getItem('qrLibrarySort')||'recent';list.sort((a,b)=>{const chars=x=>(x.chapters||[]).reduce((sum,ch)=>sum+String(ch.text||'').length,0);if(sort==='title')return String(a.title||'').localeCompare(String(b.title||''));if(sort==='rating-asc')return (Number(a.rating)||0)-(Number(b.rating)||0);if(sort==='rating-desc')return (Number(b.rating)||0)-(Number(a.rating)||0);if(sort==='characters-desc')return chars(b)-chars(a);if(sort==='characters-asc')return chars(a)-chars(b);return (b.updated||0)-(a.updated||0)});const grid=$('bookGrid');
  grid.innerHTML='';
  const view=localStorage.getItem('qrLibraryView')||'expanded';grid.classList.toggle('compact-view',view==='compact');document.querySelectorAll('[data-library-view]').forEach(button=>{button.classList.toggle('active',button.dataset.libraryView===view);button.setAttribute('aria-pressed',String(button.dataset.libraryView===view))});
  if(!list.length)grid.innerHTML='<div class="empty">No books match this filter.</div>';
@@ -23,6 +32,11 @@ export function drawLibrary(){
  const listEl=$('pasteList');listEl.innerHTML='';
  if(!state.pastes.length)listEl.innerHTML='<div class="empty">No saved pasted chapters.</div>';
  for(const p of state.pastes){const row=document.createElement('div');row.className='chapter-row';row.innerHTML='<div class="chapter-name"><b>'+esc(p.title||'Untitled chapter')+'</b><div class="tiny muted">'+(p.text||'').length+' characters</div></div><button data-paste-open="'+p.id+'">Open</button><button data-paste-delete="'+p.id+'">×</button>';listEl.append(row)}
+}
+export function setLibrarySearch(query,mode){
+ librarySearchQuery=String(query||'');
+ librarySearchMode=mode==='author'?'author':'everything';
+ drawLibrary();
 }
 export function setLibraryView(view){const next=view==='compact'?'compact':'expanded';localStorage.setItem('qrLibraryView',next);$('bookGrid')?.classList.toggle('compact-view',next==='compact');document.querySelectorAll('[data-library-view]').forEach(button=>{button.classList.toggle('active',button.dataset.libraryView===next);button.setAttribute('aria-pressed',String(button.dataset.libraryView===next))})}
 export function openBook(id){state.book=state.books.find(b=>b.id===id);if(!state.book)return;currentBookTab='chapters';drawBook();setScreen('book')}
