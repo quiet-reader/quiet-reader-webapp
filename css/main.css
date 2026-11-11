@@ -178,3 +178,17 @@ select:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,v
 .reading-body.focus-active p.read-from-here-hover{cursor:pointer}
 
 .reading-body.focus-active p.read-from-here-hover{opacity:.52}
+
+
+/* Animated selector affordances, ratings and backup choices */
+.sort-label{display:flex;flex-direction:row;align-items:center;gap:8px;white-space:nowrap}
+.sort-label select{width:auto;min-width:190px}
+.novel-stats{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:5px 0 8px}
+.novel-stats label{display:flex;flex-direction:row;align-items:center;gap:8px}
+.novel-stats select{width:auto;min-width:160px;padding:6px 34px 6px 9px;font-size:12px}
+.backup-option{display:flex;flex-direction:row;align-items:flex-start;gap:10px;padding:10px 11px;border:1px solid var(--line);border-radius:9px;background:color-mix(in srgb,var(--panel2) 35%,var(--panel));color:var(--fg);line-height:1.45}
+.backup-option input{width:17px;height:17px;flex:none;margin:2px 0 0;accent-color:var(--accent)}
+select{transform-origin:top center;transition:background-color .2s ease,border-color .2s ease,box-shadow .2s ease,filter .2s ease}
+select:focus{animation:select-focus-in .2s ease both}
+@keyframes select-focus-in{from{filter:brightness(.92)}to{filter:brightness(1)}}
+@media(max-width:650px){.sort-label{width:100%;justify-content:space-between}.sort-label select{flex:1;min-width:0}.novel-stats{align-items:flex-start;flex-direction:column;gap:6px}}
