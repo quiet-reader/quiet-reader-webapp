@@ -523,3 +523,7 @@ select:focus{animation:select-focus-in .2s ease both}
  .image-viewer-current>img{height:48vh}
  .image-viewer-meta{gap:4px 9px;font-size:9px}
 }
+
+.image-individual-history{display:flex;flex-wrap:wrap;gap:5px 12px;margin:8px 0;color:#aaa;font-size:10px}
+.image-individual-history b{flex-basis:100%;font-size:11px;color:#ddd}
+.image-individual-history span{padding:2px 0}
