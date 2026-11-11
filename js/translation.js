@@ -1,6 +1,7 @@
 import { $, esc, toast, modal, closeModal } from './utils.js';
 import { state } from './state.js';
 import { chapterHTML } from './reader.js';
+import { renderHighlights } from './highlights.js';
 
 const STORAGE_KEY='qrTranslationSources';
 let translated={bookId:null,chapter:null,text:null};
@@ -48,6 +49,7 @@ function translationMarkup(text){
  const chapter=state.book?.chapters?.[state.chapter];if(!chapter)return;
  $('readingBody').innerHTML=chapterHTML({...chapter,text});
  $('readingBody').classList.remove('hidden');$('sectionView').classList.add('hidden');
+ $('chapterFormatControls').querySelectorAll('[data-chapter-format]').forEach(button=>button.disabled=true);
 }
 function updateControls(){
  const active=translated.bookId===state.book?.id&&translated.chapter===state.chapter&&typeof translated.text==='string';
@@ -60,7 +62,8 @@ export function restoreOriginalChapter(){
  if(translated.bookId!==state.book?.id||translated.chapter!==state.chapter)return;
  translated={bookId:null,chapter:null,text:null};
  const c=state.book.chapters[state.chapter];$('readingBody').innerHTML=chapterHTML(c);
- updateControls();
+ $('chapterFormatControls').querySelectorAll('[data-chapter-format]').forEach(button=>button.disabled=false);
+ renderHighlights();updateControls();
 }
 export async function copyTranslatedChapter(){
  if(translated.bookId!==state.book?.id||translated.chapter!==state.chapter||typeof translated.text!=='string')return toast('Translate this chapter first');
@@ -97,7 +100,7 @@ export function openTranslatePage(){
  if(!list.length){manageTranslationSources();toast('Create a translation source first');return}
  const active=translated.bookId===state.book.id&&translated.chapter===state.chapter;
  const options=list.map(s=>'<option value="'+esc(s.id)+'">'+esc(s.name)+' · '+esc(sourceTypeLabel(s.type))+'</option>').join('');
- const body='<div class="stack"><label>Translation source<select id="trChooseSource">'+options+'</select></label><label>Target language code<input id="trTargetLanguage" value="'+esc(list[0].defaultTarget||'en')+'" placeholder="en, zh-CN, ja…"></label><p class="muted tiny">The complete chapter is sent in one request to preserve context. It will not be split into smaller chunks. Large chapters may exceed the selected provider’s request limit.</p><div id="trProgress" class="muted tiny" aria-live="polite"></div><div class="row"><button id="trManageSources">Manage sources</button><span class="grow"></span><button id="trStart" class="primary">Translate entire chapter</button></div></div>';
+ const body='<div class="stack"><label>Translation source<select id="trChooseSource">'+options+'</select></label><label>Target language code<input id="trTargetLanguage" value="'+esc(list[0].defaultTarget||'en')+'" placeholder="en, zh-CN, ja…"></label><p class="muted tiny">The complete chapter is sent in one request to preserve context. It will not be split into smaller chunks. Image markers are protected and restored after translation. Large chapters may exceed the selected provider’s request limit.</p><div id="trProgress" class="muted tiny" aria-live="polite"></div><div class="row"><button id="trManageSources">Manage sources</button><span class="grow"></span><button id="trStart" class="primary">Translate entire chapter</button></div></div>';
  modal('Translate page',body,()=>{
   $('trChooseSource').onchange=()=>{const s=sources().find(x=>x.id===$('trChooseSource').value);if(s)$('trTargetLanguage').value=s.defaultTarget||'en'};
   $('trManageSources').onclick=()=>manageTranslationSources();
@@ -107,7 +110,10 @@ export function openTranslatePage(){
    if(!source||!target||!original)return toast('Choose a source and target language');
    $('trStart').disabled=true;$('trProgress').textContent='Translating the complete chapter…';
    try{
-    const result=await translateWith(source,original,target);
+    const protectedTokens=[];
+    const safeText=original.replace(/\\[IMAGE:[^\\]]+\\]/g,token=>{const marker='QRIMAGEPLACEHOLDER'+protectedTokens.length+'TOKEN';protectedTokens.push([marker,token]);return marker});
+    let result=await translateWith(source,safeText,target);
+    for(const [marker,token] of protectedTokens)result=result.replaceAll(marker,token);
     translated={bookId:state.book.id,chapter:state.chapter,text:result};
     translationMarkup(result);updateControls();closeModal();toast('Chapter translated');
    }catch(error){$('trProgress').textContent=error.message;$('trStart').disabled=false}
