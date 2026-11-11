@@ -64,9 +64,11 @@ The app uses the `quietbook-v2` IndexedDB database and its `items` object store.
 
 The `novel-linking` branch adds local relationships between library novels and their chapters:
 
-- **Novel relationships:** open a novel and choose **Novel links**, or use **Links** on its library card. Link corresponding editions/translations with a two-way arrow, or define a sequel/prequel relationship with a directional arrow.
-- **Chapter relationships:** use the ↔ control beside a chapter in the novel index, or **Manage links** in the reader. Pair corresponding source/translated chapters in both directions, or mark a chapter as preceding another chapter in a serial.
-- **Reader navigation:** linked chapters appear as subdued arrow controls below the chapter title. Hover or focus highlights them; selecting one opens the linked novel at the linked chapter. The current chapter remains the main reading focus.
-- Relationships are saved with the local novel records in IndexedDB and are included in full novel backups.
+- **Corresponding novels:** link two editions/translations with a two-way relationship. Quiet Reader automatically pairs chapter 1 with chapter 1, chapter 2 with chapter 2, and so on, up to the number of chapters available in the shorter novel. For example, a 30-chapter novel linked to a 25-chapter edition gets 25 corresponding chapter pairs.
+- **Novel series:** define a sequel/prequel relationship with a directional arrow. This does not automatically pair chapters.
+- **Chapter relationships:** manually add or remove individual chapter links from the chapter index or reader. These can connect source/translated chapters or mark sequential chapters.
+- **Reader navigation:** linked chapter controls appear directly under the current chapter title, followed by the chapter's character count. Hover or focus highlights a link; selecting it opens the linked novel at the corresponding chapter.
+- Automatically generated chapter pairs are marked internally so re-linking a corresponding novel pair refreshes those generated pairs without deleting manually created links.
+- Relationships are saved with local novel records in IndexedDB and included in full novel backups.
 
-These are manual links: the reader does not attempt to guess whether two novels or chapters are translations of each other.
+Chapter pairing is positional, not based on title similarity or translation detection. Only matching chapter indexes are paired automatically; extra chapters in the longer novel remain unpaired.
