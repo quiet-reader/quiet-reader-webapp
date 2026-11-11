@@ -18,6 +18,39 @@ export function renderImageTranslationOverlay(image){
  panel.textContent=text;
  root.append(panel);
 }
+async function prepareOcrImage(data){
+ const source=new Image();
+ source.src=data;
+ await new Promise((resolve,reject)=>{if(source.complete&&source.naturalWidth)resolve();else{source.onload=resolve;source.onerror=()=>reject(new Error('Could not prepare image for OCR.'))}});
+ const scale=Math.min(2.5,2600/Math.max(source.naturalWidth,source.naturalHeight),Math.max(1,1800/Math.max(source.naturalWidth,source.naturalHeight)));
+ const canvas=document.createElement('canvas');
+ canvas.width=Math.max(1,Math.round(source.naturalWidth*scale));
+ canvas.height=Math.max(1,Math.round(source.naturalHeight*scale));
+ const context=canvas.getContext('2d',{willReadFrequently:true});
+ context.drawImage(source,0,0,canvas.width,canvas.height);
+ const pixels=context.getImageData(0,0,canvas.width,canvas.height),values=pixels.data;
+ for(let i=0;i<values.length;i+=4){
+  const gray=values[i]*.299+values[i+1]*.587+values[i+2]*.114;
+  const enhanced=Math.max(0,Math.min(255,(gray-128)*1.35+128));
+  values[i]=values[i+1]=values[i+2]=enhanced;
+ }
+ context.putImageData(pixels,0,0);
+ return canvas;
+}
+function cleanOcrLines(lines,language){
+ const seen=new Set(),clean=[];
+ for(const line of lines){
+  const value=String(line.text||'').replace(/\\s+/g,' ').trim();
+  if(!value||Number(line.confidence)<38)continue;
+  const cjk=(value.match(/[\\u3000-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\uac00-\\ud7af]/g)||[]).length;
+  const letters=(value.match(/[\\p{L}\\p{N}]/gu)||[]).length;
+  if(cjk<2||cjk/Math.max(1,letters)<.45)continue;
+  const key=value.replace(/[\\s，。！？、,.!?]/g,'');
+  if(seen.has(key))continue;
+  seen.add(key);clean.push(value);
+ }
+ return clean;
+}
 export function openImageTranslation(image){
  const sources=getImageTranslationSources();
  if(!sources.length){toast('Add a Google, DeepL, or LibreTranslate API source in Translation sources first');return}
@@ -37,12 +70,17 @@ export function openImageTranslation(image){
   try{
    const module=await import('https://esm.sh/tesseract.js@5.1.1');
    if(!worker||workerLanguage!==language){if(worker)await worker.terminate();worker=await module.createWorker(language,1,{logger:event=>{if(event.status)progress.textContent='OCR: '+event.status+(event.progress?' '+Math.round(event.progress*100)+'%':'')}});workerLanguage=language}
+   progress.textContent='Preparing image for clearer text recognition…';
+   const prepared=await prepareOcrImage(image.data);
+   await worker.setParameters({tessedit_pageseg_mode:'11',preserve_interword_spaces:'1'});
    progress.textContent='Recognizing text…';
-   const result=await worker.recognize(image.data);
-   const lines=(result.data.lines||[]).filter(line=>line.text?.trim()&&line.confidence>=15);
-   if(!lines.length)throw new Error('No readable text detected. Try another language or a clearer image.');
-   progress.textContent='Translating '+lines.length+' detected regions to English…';
-   const joined=lines.map(line=>line.text.trim()).join('\n');
+   const result=await worker.recognize(prepared);
+   const detected=cleanOcrLines(result.data.lines||[],language);
+   if(!detected.length)throw new Error('No reliable text detected. Try a clearer image or check the selected language.');
+   progress.textContent='Translating '+detected.length+' cleaned text lines to English…';
+   // Chinese and Japanese sentence flow is often split across visual lines.
+   // Join adjacent OCR lines so the provider can translate in context.
+   const joined=detected.join(language.startsWith('chi')?'':'\n');
    const translated=await translateImageText(joined,sourceId);
    if(!translated.trim())throw new Error('The translation provider returned empty text. Try another source.');
    overlays.set(image.id,translated.trim());
