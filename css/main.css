@@ -287,3 +287,7 @@ select:focus{animation:select-focus-in .2s ease both}
 .modal:has(#appearanceTheme) .select-popover-trigger{width:100%;min-height:46px;font-size:14px;padding:10px 13px}
 .modal:has(#appearanceTheme) .select-popover{width:100%;min-width:100%;max-width:100%;max-height:none;overflow:visible}
 .modal:has(#appearanceTheme) .select-popover button{min-height:44px;font-size:14px;padding:11px 14px}
+
+/* Paragraph-level highlight action in the reader selection toolbar */
+.selection-paragraph-action{width:auto!important;min-width:unset!important;height:28px!important;padding:0 9px!important;border-radius:5px!important;background:#454545!important;color:#eee!important;border:1px solid #aaa!important;font-size:11px!important;font-weight:700!important;white-space:nowrap}
+.selection-paragraph-action:hover{background:#5b5140!important;border-color:var(--accent)!important;color:var(--accent)!important;transform:translateY(-2px)!important}
