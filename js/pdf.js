@@ -29,7 +29,7 @@ export async function importPDF(file){
   if(!extracted)throw new Error('No selectable text was found. This PDF may be scanned or image-only.');
   const title=file.name.replace(/\.pdf$/i,'').trim()||'Imported PDF';
   const book=freshBook('pdf',title);
-  book.chapters=[{title,text:extracted,images:[]}];
+  const now=Date.now();book.chapters=[{title,text:extracted,images:[],createdAt:now,updatedAt:now,history:[]}];
   await put(book);
   await refresh();
   openBook(book.id);
