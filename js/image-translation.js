@@ -15,9 +15,15 @@ export function renderImageTranslationOverlay(image,transform={panX:0,panY:0,vie
   root.style.inset='0';
   root.style.width='100%';root.style.height='100%';
   root.innerHTML=items.map(item=>{
-   const left=(offsetX+item.left*renderedWidth)/width*100;
-   const top=(offsetY+item.top*renderedHeight)/height*100;
-   const boxWidth=item.width*renderedWidth/width*100,boxHeight=item.height*renderedHeight/height*100;
+   const imageLeft=(offsetX+item.left*renderedWidth)/width*100;
+   const imageTop=(offsetY+item.top*renderedHeight)/height*100;
+   const originalWidth=item.width*renderedWidth/width*100,originalHeight=item.height*renderedHeight/height*100;
+   // English is often much wider/taller than the source glyphs. Expand each
+   // OCR box around its original position so the translation cannot be clipped.
+   const boxWidth=Math.min(72,Math.max(originalWidth,32));
+   const boxHeight=Math.min(28,Math.max(originalHeight,8));
+   const left=Math.max(0,Math.min(100-boxWidth,imageLeft-(boxWidth-originalWidth)/2));
+   const top=Math.max(0,Math.min(100-boxHeight,imageTop-(boxHeight-originalHeight)/2));
    return '<div class="image-translation-label" style="left:'+left+'%;top:'+top+'%;width:'+boxWidth+'%;height:'+boxHeight+'%">'+esc(item.text)+'</div>';
   }).join('');
   root.style.transform='translate3d('+transform.panX+'px,'+transform.panY+'px,0) scale('+transform.viewerZoom+')';
