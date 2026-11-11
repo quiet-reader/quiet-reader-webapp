@@ -297,7 +297,7 @@ function speakCurrentParagraph(){
  }
  if(!ttsSupported()||!voicesReady)return false;
  const nodes=autoReadNodes(),node=nodes[autoReadIndex];
- const text=(node?.innerText||'').trim();
+ const fullText=(node?.innerText||'').trim();const startingOffset=Math.max(0,Math.min(fullText.length,autoReadCharOffset));const text=fullText.slice(startingOffset);
  if(!text)return false;
  cancelSpeech();
  const utterance=new SpeechSynthesisUtterance(text);
@@ -305,7 +305,7 @@ function speakCurrentParagraph(){
  if(voice)utterance.voice=voice;
  utterance.rate=ttsSpeechRate();
  utterance.onstart=()=>setTTSStatus('Speaking'+(voice?.localService?' · Local':''));
- utterance.onboundary=event=>{if(currentUtterance!==utterance||!Number.isFinite(event.charIndex))return;currentUtterance.charIndex=event.charIndex;autoReadCharOffset=event.charIndex;saveAutoReadCursor();const source=utterance.text||'';let start=0,end=source.length;const before=source.slice(0,event.charIndex);const last=Math.max(before.lastIndexOf('.'),before.lastIndexOf('!'),before.lastIndexOf('?'),before.lastIndexOf('。'),before.lastIndexOf('！'),before.lastIndexOf('？'));if(last>=0)start=last+1;const tail=source.slice(event.charIndex);const stops=[tail.indexOf('.'),tail.indexOf('!'),tail.indexOf('?'),tail.indexOf('。'),tail.indexOf('！'),tail.indexOf('？')].filter(x=>x>=0);if(stops.length)end=event.charIndex+Math.min(...stops)+1;highlightAutoReadSentence(source.slice(start,end).trim())};
+ utterance.onboundary=event=>{if(currentUtterance!==utterance||!Number.isFinite(event.charIndex))return;currentUtterance.charIndex=startingOffset+event.charIndex;autoReadCharOffset=startingOffset+event.charIndex;saveAutoReadCursor();const source=utterance.text||'';let start=0,end=source.length;const before=source.slice(0,event.charIndex);const last=Math.max(before.lastIndexOf('.'),before.lastIndexOf('!'),before.lastIndexOf('?'),before.lastIndexOf('。'),before.lastIndexOf('！'),before.lastIndexOf('？'));if(last>=0)start=last+1;const tail=source.slice(event.charIndex);const stops=[tail.indexOf('.'),tail.indexOf('!'),tail.indexOf('?'),tail.indexOf('。'),tail.indexOf('！'),tail.indexOf('？')].filter(x=>x>=0);if(stops.length)end=event.charIndex+Math.min(...stops)+1;highlightAutoReadSentence(source.slice(start,end).trim())};
  utterance.onend=()=>{if(currentUtterance!==utterance)return;currentUtterance=null;if(autoReadRunning&&!autoReadPaused)advanceAutoRead()};
  utterance.onerror=event=>{if(currentUtterance!==utterance)return;currentUtterance=null;setTTSStatus('Speech error · continuing focus mode');if(autoReadRunning&&!autoReadPaused){const chars=(node.innerText||'').length;const delay=Math.max(800,Math.min(60000,chars/autoReadCharsPerMinute(Number($('autoReadSpeed')?.value||55))*60000));autoReadTimer=setTimeout(advanceAutoRead,delay)}};
  currentUtterance=utterance;
