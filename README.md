@@ -60,3 +60,13 @@ The app uses the `quietbook-v2` IndexedDB database and its `items` object store.
 ## Branch note
 
 `kokoro-webgpu-test` is an experimental comparison branch for the WebGPU/FP32 Kokoro engine. It also contains the current reader, library, novel-wide search, per-novel notes and interface improvements. It is separate from the original upstream repository and should not be treated as a replacement for a stable WASM build without testing the target browser and hardware.
+## Novel and chapter linking
+
+The `novel-linking` branch adds local relationships between library novels and their chapters:
+
+- **Novel relationships:** open a novel and choose **Novel links**, or use **Links** on its library card. Link corresponding editions/translations with a two-way arrow, or define a sequel/prequel relationship with a directional arrow.
+- **Chapter relationships:** use the ↔ control beside a chapter in the novel index, or **Manage links** in the reader. Pair corresponding source/translated chapters in both directions, or mark a chapter as preceding another chapter in a serial.
+- **Reader navigation:** linked chapters appear as subdued arrow controls below the chapter title. Hover or focus highlights them; selecting one opens the linked novel at the linked chapter. The current chapter remains the main reading focus.
+- Relationships are saved with the local novel records in IndexedDB and are included in full novel backups.
+
+These are manual links: the reader does not attempt to guess whether two novels or chapters are translations of each other.
