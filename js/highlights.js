@@ -14,7 +14,9 @@ export function renderHighlights(){
  const root=$('readingBody');if(!root||!state.book)return;
  root.querySelectorAll('mark[data-highlight]').forEach(mark=>{const parent=mark.parentNode;if(!parent)return;while(mark.firstChild)parent.insertBefore(mark.firstChild,mark);mark.remove()});root.normalize();
  const saved=(state.book.highlights||[]).filter(m=>Number(m.chapter)===Number(state.chapter)&&m.text);if(!saved.length)return;
- const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];let total=0,node;while((node=walker.nextNode())){const start=total;total+=node.nodeValue.length;nodes.push({node,start,end:total})}
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];let total=0,node,lastBlock=null;
+ const blockOf=n=>{let el=n.parentElement;while(el&&el!==root){if(/^(P|DIV|LI|BLOCKQUOTE|H[1-6]|PRE|SECTION|ARTICLE)$/.test(el.tagName))return el;el=el.parentElement}return root};
+ while((node=walker.nextNode())){const block=blockOf(node);if(lastBlock&&block!==lastBlock)total++;const start=total;total+=node.nodeValue.length;nodes.push({node,start,end:total});lastBlock=block}
  const fullText=nodes.map(x=>x.node.nodeValue).join('');
  const normalizeWithMap=value=>{let out='',map=[];for(let i=0;i<value.length;i++){const c=value[i];if(/\\s/.test(c)){if(!out.endsWith(' ')){out+=' ';map.push(i)}}else{out+=c;map.push(i)}}return {text:out,map}};
  const normalized=normalizeWithMap(fullText);
