@@ -46,8 +46,18 @@ async function copyImage(index){
 
 export function renderGallery(){
  const book=state.book,host=$('galleryContent');if(!host||!book)return;
- const gallery=book.gallery||{images:[],view:'grid'},images=gallery.images||[],view=gallery.view==='slider'?'slider':'grid';
+ book.gallery=book.gallery||{images:[],view:'grid'};
+ const gallery=book.gallery,images=gallery.images||[],view=gallery.view==='slider'?'slider':'grid';
  host.innerHTML='<div class="gallery-toolbar"><div class="row wrap"><button type="button" data-gallery-view="grid" class="'+(view==='grid'?'active':'')+'">▦ Grid</button><button type="button" data-gallery-view="slider" class="'+(view==='slider'?'active':'')+'">▣ Slideshow</button><span class="muted tiny">'+images.length+' image'+(images.length===1?'':'s')+'</span><span class="grow"></span><button type="button" data-gallery-add>＋ Add images</button><button type="button" data-gallery-folder>＋ Add folder</button></div></div>';
+ host.onclick=async event=>{
+  const viewButton=event.target.closest('[data-gallery-view]');
+  if(viewButton){gallery.view=viewButton.dataset.galleryView;await put(book);renderGallery();return}
+  if(event.target.closest('[data-gallery-add]')){addGalleryImages();return}
+  if(event.target.closest('[data-gallery-folder]')){addGalleryFolder();return}
+  const copy=event.target.closest('[data-gallery-copy]');if(copy){await copyImage(Number(copy.dataset.galleryCopy));return}
+  if(event.target.closest('[data-gallery-prev]')){sliderIndex=Math.max(0,sliderIndex-1);renderGallery();return}
+  if(event.target.closest('[data-gallery-next]')){sliderIndex=Math.min(images.length-1,sliderIndex+1);renderGallery()}
+ };
  if(!images.length){host.innerHTML+='<div class="empty">This gallery is empty. Add images or a folder to get started.</div>';return}
  if(view==='grid'){
   host.innerHTML+='<div class="gallery-grid">'+images.map((image,index)=>'<figure class="gallery-card"><img loading="lazy" src="'+image.data+'" alt="'+esc(image.name||'Gallery image')+'"><figcaption><span title="'+esc(image.name||'')+'">'+esc(image.name||'Image '+(index+1))+'</span><button type="button" class="gallery-copy" data-gallery-copy="'+index+'" aria-label="Copy image" title="Copy image">▢</button></figcaption></figure>').join('')+'</div>';
@@ -56,13 +66,4 @@ export function renderGallery(){
   const image=images[sliderIndex];
   host.innerHTML+='<div class="gallery-slider"><button type="button" data-gallery-prev '+(sliderIndex===0?'disabled':'')+' aria-label="Previous image">‹</button><figure><img src="'+image.data+'" alt="'+esc(image.name||'Gallery image')+'"><figcaption><span>'+esc(image.name||'Image '+(sliderIndex+1))+' · '+(sliderIndex+1)+' / '+images.length+'</span><button type="button" class="gallery-copy" data-gallery-copy="'+sliderIndex+'" aria-label="Copy image" title="Copy image">▢ Copy</button></figcaption></figure><button type="button" data-gallery-next '+(sliderIndex===images.length-1?'disabled':'')+' aria-label="Next image">›</button></div>';
  }
- host.onclick=async event=>{
-  const viewButton=event.target.closest('[data-gallery-view]');
-  if(viewButton){book.gallery.view=viewButton.dataset.galleryView;await put(book);renderGallery();return}
-  if(event.target.closest('[data-gallery-add]')){addGalleryImages();return}
-  if(event.target.closest('[data-gallery-folder]')){addGalleryFolder();return}
-  const copy=event.target.closest('[data-gallery-copy]');if(copy){await copyImage(Number(copy.dataset.galleryCopy));return}
-  if(event.target.closest('[data-gallery-prev]')){sliderIndex=Math.max(0,sliderIndex-1);renderGallery();return}
-  if(event.target.closest('[data-gallery-next]')){sliderIndex=Math.min(images.length-1,sliderIndex+1);renderGallery()}
- };
 }
