@@ -34,6 +34,21 @@ Quiet Reader is a local-first web reader for personal novels and EPUB books. It 
 
 **WebGPU requirements and first run:** Use a supported browser with hardware acceleration and a working WebGPU GPU adapter. Serve the app from HTTPS (for example, GitHub Pages) or localhost; opening the HTML file directly is not supported for the module-based app. The first run downloads model/runtime assets and may compile GPU shaders, so initial setup and generation can take longer. This experimental branch intentionally does not silently fall back to WASM; if WebGPU is unavailable, it reports an error so the selected backend remains clear.
 
+
+### Whole-chapter translation
+
+Open **Translation sources** in the navigation drawer to configure providers, then use **Translate page** in the reader. The translated chapter is shown temporarily; the original chapter remains unchanged. Use **Show original** to restore it and **Copy translated** to copy the complete result.
+
+Available source types:
+
+- **Google Translate (free, unofficial):** Uses Google's public web translation endpoint without an API key. This is not the official Google Cloud Translation API, has no service guarantee, and may reject long requests or change without notice. It sends the complete chapter in one request; Quiet Reader does not split it into chunks.
+- **Google Cloud Translation API:** Official API; requires a Google Cloud API key and may incur charges after any applicable free allowance.
+- **DeepL API:** Requires a DeepL API key and follows the account's plan and usage limits.
+- **LibreTranslate / local:** Connects to a LibreTranslate-compatible server. A self-hosted server can be used without a paid hosted service; the server must be reachable from the browser and allow CORS.
+- **OmniTranslate (manual handoff):** Opens [OmniTranslate](https://app.readomni.com/), copies the original chapter, and provides a paste-back field for the translated result. This is not a direct API integration: OmniTranslate's published documentation describes its own web app and free Starter plan, but does not document a public third-party translation API. Its Starter plan currently allows up to 5,000 characters per translation; longer chapters require Pro or separate handling. See [OmniTranslate's first-translation guide](https://docs.readomni.com/getting-started/your-first-translation) and [plans](https://docs.readomni.com/guide/plans).
+
+**Privacy and limits:** Online providers receive the chapter text. API keys configured in Quiet Reader are stored in this browser's local storage. The free Google endpoint is unofficial and may have request-size, rate-limit, CORS or availability restrictions. Whole-chapter mode never silently chunks a request; if a provider cannot accept it, the app reports the error instead.
+
 ## Run
 
 Open the repository through a local static server, or enable GitHub Pages. No build step is required. JSZip and PDF.js are loaded from CDNs for EPUB and PDF support; Kokoro runtime/model assets are also fetched when the Kokoro engine is used.
