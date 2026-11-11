@@ -72,10 +72,21 @@ export async function copyTranslatedChapter(){
 async function translateWith(source,text,target){
  const count=[...text].length;
  if(source.type==='googleFree'){
-  const url='https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl='+encodeURIComponent(target)+'&dt=t&q='+encodeURIComponent(text);
-  const response=await fetch(url,{method:'GET'});if(!response.ok)throw new Error('Google Translate Free request failed (HTTP '+response.status+').');
-  const data=await response.json();const result=Array.isArray(data?.[0])?data[0].map(part=>part?.[0]||'').join(''):'';
-  if(!result)throw new Error('Google Translate Free returned no translation. The request may be too long or blocked. No chunks were sent.');return result;
+  // Use a form-encoded POST so the chapter is sent in the request body,
+  // not embedded in a potentially enormous URL. This is still an
+  // undocumented Google web endpoint, not the supported Cloud API.
+  const params=new URLSearchParams({client:'gtx',sl:'auto',tl:target,dt:'t',q:text});
+  let response;
+  try{
+   response=await fetch('https://translate.googleapis.com/translate_a/single',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:params.toString(),credentials:'omit'});
+  }catch(error){
+   throw new Error('Google Translate Free could not be reached. The unofficial endpoint may be blocked by Google, your browser, or your network (CORS/network failure). Try again, or use another source. No chunks were sent.');
+  }
+  const raw=await response.text();
+  if(!response.ok)throw new Error('Google Translate Free rejected the request (HTTP '+response.status+'). The public endpoint may be rate-limiting or blocking this network. No chunks were sent.');
+  let data;try{data=JSON.parse(raw)}catch{throw new Error('Google Translate Free returned an unreadable response (possibly a block or CAPTCHA page). No chunks were sent.')}
+  const result=Array.isArray(data?.[0])?data[0].map(part=>part?.[0]||'').join(''):'';
+  if(!result)throw new Error('Google Translate Free returned no translation. The endpoint may have rejected this chapter. No chunks were sent.');return result;
  }
  if(source.type==='google'&&count>30000)throw new Error('This chapter exceeds Google Cloud Translation’s 30,000-character request limit. No chunks were sent.');
  if(source.type==='deepl'&&count>128000)throw new Error('This chapter exceeds DeepL’s 128,000-character request limit. No chunks were sent.');
