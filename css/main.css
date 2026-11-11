@@ -306,3 +306,7 @@ select:focus{animation:select-focus-in .2s ease both}
 .reader-scroll-controls button{display:grid;place-items:center;width:30px;height:30px;min-width:30px;padding:0;border:1px solid #7778;border-radius:5px;background:#454545b8;color:#d0d0d0;font-size:17px;line-height:1;box-shadow:0 2px 7px #0003;backdrop-filter:blur(5px)}
 .reader-scroll-controls button:active{background:#5a5a5a;color:#fff}
 @media(max-width:650px){.reader-scroll-controls{right:max(7px,env(safe-area-inset-right));bottom:calc(16px + env(safe-area-inset-bottom))}.reader-scroll-controls button{width:28px;height:28px;min-width:28px}}
+
+
+/* Whole-chapter translation controls and source manager */
+.reader-translate-button{border-color:color-mix(in srgb,var(--accent) 42%,var(--line));color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--panel));font-size:12px;padding:6px 10px}.reader-translate-button:hover{box-shadow:0 3px 12px color-mix(in srgb,var(--accent) 18%,transparent);transform:translateY(-1px)}.reader-translate-secondary{font-size:11px;padding:5px 8px;background:var(--panel2);color:var(--fg)}.translation-source-list{display:grid;gap:8px}.translation-source-row{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}.translation-source-row>div{min-width:0}.translation-source-row button{font-size:11px;padding:6px 9px}.translation-source-form input,.translation-source-form select{width:100%}.translation-source-form p{line-height:1.5}
