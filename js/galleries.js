@@ -73,7 +73,7 @@ function showImageViewer(index){
  };
  const updateViewer=(direction=0)=>{
   const current=images[sliderIndex],prev=images[sliderIndex-1],next=images[sliderIndex+1],stage=$('imageViewerStage');if(!stage)return;
-  stage.innerHTML='<figure class="image-viewer-current"><div class="image-viewer-image-wrap" id="imageViewerImageWrap"><img id="imageViewerImage" class="viewer-image-enter" src="'+current.data+'" alt="'+esc(current.name||'Gallery image')+'" draggable="false"></div><figcaption><b>'+esc(current.name||'Image '+(sliderIndex+1))+'</b><span>'+(sliderIndex+1)+' of '+images.length+'</span></figcaption></figure>'+(prev?'<button type="button" class="image-viewer-arrow previous" data-viewer-prev aria-label="Previous image">‹</button>':'')+(next?'<button type="button" class="image-viewer-arrow next" data-viewer-next aria-label="Next image">›</button>':'')+'<div class="image-viewer-zoom-controls"><button type="button" data-viewer-zoom="out" aria-label="Zoom out">−</button><button type="button" data-viewer-zoom="fit" aria-label="Fit image">Fit</button><button type="button" data-viewer-zoom="in" aria-label="Zoom in">+</button></div>';
+  stage.innerHTML='<figure class="image-viewer-current"><div class="image-viewer-image-wrap" id="imageViewerImageWrap"><img id="imageViewerImage" class="viewer-image-enter" src="'+current.data+'" alt="'+esc(current.name||'Gallery image')+'" draggable="false"></div><span class="image-viewer-count">'+(sliderIndex+1)+' of '+images.length+'</span><figcaption><b>'+esc(current.name||'Image '+(sliderIndex+1))+'</b></figcaption></figure>'+(prev?'<button type="button" class="image-viewer-arrow previous" data-viewer-prev aria-label="Previous image">‹</button>':'')+(next?'<button type="button" class="image-viewer-arrow next" data-viewer-next aria-label="Next image">›</button>':'')+'<div class="image-viewer-zoom-controls"><button type="button" data-viewer-zoom="out" aria-label="Zoom out">−</button><button type="button" data-viewer-zoom="fit" aria-label="Fit image">Fit</button><button type="button" data-viewer-zoom="in" aria-label="Zoom in">+</button></div>';
   const strip=$('imageViewerFilmstrip');strip.innerHTML=images.map((item,i)=>'<button type="button" data-viewer-index="'+i+'" class="'+(i===sliderIndex?'active':'')+'" aria-label="Show image '+(i+1)+'" aria-current="'+(i===sliderIndex?'true':'false')+'"><img loading="lazy" decoding="async" src="'+item.data+'" alt=""></button>').join('');
   $('imageViewerMeta').innerHTML='<span>Added: '+esc(dateTime(current.addedAt))+'</span><span>Last opened: '+esc(dateTime(current.lastOpenedAt))+'</span><span>'+(current.locked?'🔒 Image locked':'🔓 Image unlocked')+'</span><span class="image-viewer-zoom-label">Zoom: '+Math.round(viewerZoom*100)+'%</span>';
   $('imageViewerDetailContent').innerHTML='<label>Notes<textarea id="galleryImageNotes" rows="3" '+(book.locked||current.locked?'disabled':'')+'>'+esc(current.notes||'')+'</textarea></label><div class="image-individual-history"><b>Image viewing history · Last 10</b>'+(current.history?.length?current.history.slice(-10).reverse().map(entry=>'<span>'+esc(dateTime(entry.openedAt))+'</span>').join(''):'<span class="muted">No previous views</span>')+'</div><div class="row wrap"><button type="button" id="saveGalleryImageNote" '+(book.locked||current.locked?'disabled':'')+'>Save note</button><span class="grow"></span><button type="button" id="copyViewerImage">Copy image</button><button type="button" id="toggleImageLock" '+(book.locked?'disabled':'')+'>'+(current.locked?'Unlock image':'Lock image')+'</button><button type="button" id="deleteViewerImage" class="danger" '+(book.locked||current.locked?'disabled':'')+'>Delete image</button></div>';
@@ -144,8 +144,16 @@ function showImageViewer(index){
 }
 function showGalleryHistory(){
  const history=[...(state.book?.gallery?.history||[])].slice(-10).reverse();
- const body=history.length?'<div class="reading-history-list">'+history.map(item=>'<div class="reading-history-entry"><span class="reading-history-copy"><b>'+esc(item.imageName||'Image')+'</b><small>'+esc(dateTime(item.openedAt))+'</small></span></div>').join('')+'</div>':'<div class="empty">No gallery viewing history yet.</div>';
- modal('Gallery history · Last 10',body);
+ const body=history.length?'<div class="reading-history-list">'+history.map(item=>'<div class="reading-history-entry"><span class="reading-history-copy"><b>'+esc(item.imageName||'Image')+'</b><small>'+esc(dateTime(item.openedAt))+'</small></span><button type="button" class="gallery-history-open" data-open-gallery-history="'+esc(item.imageId||'')+'">Open</button></div>').join('')+'</div>':'<div class="empty">No gallery viewing history yet.</div>';
+ modal('Gallery history · Last 10',body,()=>{
+  document.querySelector('#modalHost .modal')?.classList.add('gallery-history-modal');
+  $('modalHost').onclick=async event=>{
+   const open=event.target.closest('[data-open-gallery-history]');if(!open)return;
+   const imageIndex=(state.book?.gallery?.images||[]).findIndex(image=>image.id===open.dataset.openGalleryHistory);
+   if(imageIndex<0){toast('This image is no longer in the gallery');return}
+   closeModal();await openImage(imageIndex);
+  };
+ });
 }
 
 function formatBytes(value){const bytes=Math.max(0,Number(value)||0);if(bytes<1024)return bytes+' B';const units=['KB','MB','GB'];let size=bytes/1024,index=0;while(size>=1024&&index<units.length-1){size/=1024;index++}return size.toFixed(size>=10?1:2)+' '+units[index]}
