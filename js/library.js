@@ -1,5 +1,8 @@
 import {state,freshBook,setScreen} from './state.js';import {getAll,put,remove} from './db.js';import {$,esc,toast,modal} from './utils.js';import {openReader} from './reader.js';
 let currentBookTab='chapters';
+const defaultTagColors=['#d7c477','#83b8e8','#8bc58b','#e7a0bd','#b9a0e8','#e5a16b','#72c5bd','#d58f8f'];
+function savedTagColors(){try{return JSON.parse(localStorage.getItem('qrTagColors')||'{}')}catch{return {}}}
+function tagColor(tag,index){return savedTagColors()[tag]||defaultTagColors[index%defaultTagColors.length]}
 export async function refresh(){const items=await getAll();state.books=items.filter(x=>x.kind==='book');state.pastes=items.filter(x=>x.kind==='paste');drawLibrary()}
 export function drawLibrary(){
  const availableTags=[...new Set(state.books.flatMap(b=>Array.isArray(b.tags)?b.tags:[]).map(t=>String(t).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
@@ -7,11 +10,12 @@ export function drawLibrary(){
  if(tagSelect){const selected=state.tagFilter||'all';tagSelect.innerHTML='<option value="all">All tags</option>'+availableTags.map(t=>'<option value="'+esc(t)+'">'+esc(t)+'</option>').join('');tagSelect.value=availableTags.includes(selected)?selected:'all';state.tagFilter=tagSelect.value}
  const list=state.books.filter(b=>(state.filter==='all'||b.source===state.filter)&&(state.tagFilter==='all'||(b.tags||[]).includes(state.tagFilter))),grid=$('bookGrid');
  grid.innerHTML='';
+ const view=localStorage.getItem('qrLibraryView')||'expanded';grid.classList.toggle('compact-view',view==='compact');document.querySelectorAll('[data-library-view]').forEach(button=>{button.classList.toggle('active',button.dataset.libraryView===view);button.setAttribute('aria-pressed',String(button.dataset.libraryView===view))});
  if(!list.length)grid.innerHTML='<div class="empty">No books match this filter.</div>';
  for(const b of list){
   const card=document.createElement('article');card.className='book-card';
   const pct=Math.round((b.progress?.chapter||0)/Math.max(1,b.chapters.length)*100);
-  const tags=(b.tags||[]).map(t=>'<span class="book-tag">#'+esc(t)+'</span>').join('');
+  const tags=(b.tags||[]).map((t,i)=>'<span class="book-tag" style="--tag-color:'+tagColor(t,i)+'">#'+esc(t)+'</span>').join('');
   card.innerHTML='<div class="book-cover">'+(b.cover?'<img src="'+b.cover+'" alt="">':'▤')+'</div><div class="book-info"><div class="book-title">'+esc(b.title)+'</div><div class="tiny muted">'+esc(b.author||'Unknown author')+' · '+b.chapters.length+' chapters '+(b.locked?'· 🔒':'')+'</div>'+(tags?'<div class="book-tags">'+tags+'</div>':'')+'<div class="progress-track"><span style="width:'+pct+'%"></span></div><div class="actions"><button data-open="'+b.id+'">Open</button><button data-continue="'+b.id+'">Continue</button><button data-delete="'+b.id+'" '+(b.locked?'disabled title="Unlock this novel before deleting it"':'')+'>Delete</button></div></div>';
   grid.append(card);
  }
@@ -19,6 +23,7 @@ export function drawLibrary(){
  if(!state.pastes.length)listEl.innerHTML='<div class="empty">No saved pasted chapters.</div>';
  for(const p of state.pastes){const row=document.createElement('div');row.className='chapter-row';row.innerHTML='<div class="chapter-name"><b>'+esc(p.title||'Untitled chapter')+'</b><div class="tiny muted">'+(p.text||'').length+' characters</div></div><button data-paste-open="'+p.id+'">Open</button><button data-paste-delete="'+p.id+'">×</button>';listEl.append(row)}
 }
+export function setLibraryView(view){const next=view==='compact'?'compact':'expanded';localStorage.setItem('qrLibraryView',next);$('bookGrid')?.classList.toggle('compact-view',next==='compact');document.querySelectorAll('[data-library-view]').forEach(button=>{button.classList.toggle('active',button.dataset.libraryView===next);button.setAttribute('aria-pressed',String(button.dataset.libraryView===next))})}
 export function openBook(id){state.book=state.books.find(b=>b.id===id);if(!state.book)return;currentBookTab='chapters';drawBook();setScreen('book')}
 export function drawBook(){const b=state.book;if(!b)return;$('detailTitle').textContent=b.title;$('bookNotes').value=b.notes||'';$('bookNotes').disabled=Boolean(b.locked);$('saveBookNotes').disabled=Boolean(b.locked);setBookTab(currentBookTab);$('detailAuthor').textContent=b.author||'Unknown author';$('detailCover').innerHTML=b.cover?'<img src="'+b.cover+'" alt="">':'▤';$('lockLabel').textContent=b.locked?'🔒 Editing locked':'🔓 Editing enabled';$('lockBook').textContent=b.locked?'Unlock editing':'Lock editing';$('addChapter').disabled=b.locked;$('addTxtChapter').disabled=b.locked;$('addTxtChapters').disabled=b.locked;$('editDetails').disabled=b.locked;$('changeCover').disabled=b.locked;const el=$('chapterList');el.innerHTML='';if(!b.chapters.length)el.innerHTML='<div class="empty">No chapters yet. Add your first chapter.</div>';b.chapters.forEach((c,i)=>{const row=document.createElement('div');row.className='chapter-row';row.innerHTML='<div class="chapter-name" data-read="'+i+'"><b>'+esc(c.title||'Chapter '+(i+1))+'</b><div class="tiny muted">'+(c.text||'').length+' characters</div></div><button data-edit="'+i+'" '+(b.locked?'disabled':'')+'>Edit</button><button data-read-button="'+i+'">Read</button>';el.append(row)})}
 
