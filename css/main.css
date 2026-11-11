@@ -667,8 +667,8 @@ select:focus{animation:select-focus-in .2s ease both}
 /* OCR translation is available only inside the fullscreen gallery viewer. */
 .image-translate-trigger{align-self:center!important;flex:0 0 auto!important;margin:0 auto 2px!important;padding:4px 11px!important;border:1px solid transparent!important;background:transparent!important;color:var(--fg)!important;font-size:11px!important;opacity:.1!important;transition:opacity .18s ease,background .18s ease!important}
 .image-translate-trigger:hover,.image-translate-trigger:focus-visible{opacity:1!important;background:var(--panel2)!important;border-color:var(--line)!important}
-.image-translation-overlay{position:absolute;inset:0;z-index:6;pointer-events:none;transform-origin:center center;overflow:visible}
-.image-translation-label{position:absolute;box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:visible;padding:4px 7px;border:1px solid #ffffff55;border-radius:4px;background:rgba(8,10,15,.97);color:#fff;font:600 clamp(11px,1.5vw,17px)/1.25 Arial,sans-serif;text-align:center;overflow-wrap:anywhere;word-break:normal;box-shadow:0 2px 8px #000b;min-width:32%;min-height:8%;}
+.image-translation-overlay{position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden}
+.image-translation-result{position:absolute;left:clamp(8px,2vw,22px);right:clamp(8px,2vw,22px);bottom:clamp(8px,2vh,18px);max-height:32%;overflow:auto;box-sizing:border-box;padding:10px 13px;border:1px solid #ffffff55;border-radius:9px;background:rgba(255,255,255,.92);color:#171717;font:500 clamp(13px,1.6vw,17px)/1.5 Arial,sans-serif;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;box-shadow:0 2px 12px #0003;pointer-events:auto}
 
 /* Translation dialog is mounted inside the fullscreen viewer, never in the global modal host. */
 .image-translation-dialog{position:fixed!important;inset:0!important;z-index:10050!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:18px!important;background:rgba(0,0,0,.68)!important}
