@@ -171,6 +171,12 @@ let kokoroQueueEpoch=0;
 let kokoroQueueWorker=false;
 let kokoroSentenceUnits=[];
 let kokoroSentenceIndex=0;
+let autoReadCharOffset=0;
+let autoReadCursorChapter=-1;
+function cursorKey(){return 'qrAutoReadCursor:'+String(state.book?.id||'')}
+function saveAutoReadCursor(){if(!state.book)return;const cursor={chapter:state.chapter,paragraph:autoReadIndex,char:autoReadCharOffset};try{localStorage.setItem(cursorKey(),JSON.stringify(cursor))}catch{}}
+function loadAutoReadCursor(){try{const value=JSON.parse(localStorage.getItem(cursorKey())||'null');if(value&&value.chapter===state.chapter){autoReadIndex=Math.max(0,Number(value.paragraph)||0);autoReadCharOffset=Math.max(0,Number(value.char)||0)}else{autoReadIndex=0;autoReadCharOffset=0}}catch{autoReadIndex=0;autoReadCharOffset=0}}
+export function setAutoReadPosition(paragraphIndex){if(!state.book)return;const nodes=autoReadNodes();autoReadIndex=Math.max(0,Math.min(nodes.length-1,Number(paragraphIndex)||0));autoReadCharOffset=0;kokoroSentenceIndex=0;kokoroSentenceUnits=[];saveAutoReadCursor();if(autoReadRunning){cancelSpeech();autoReadRunning=true;autoReadPaused=false;if($('ttsEnabled')?.checked&&$('ttsEngine')?.value==='kokoro')rebuildKokoroSentenceUnits();scheduleAutoRead()}else{highlightAutoReadParagraph();toast('Auto-read will start from this paragraph')}}
 function splitSpeechSentences(text){
  const source=String(text||'').trim();
  if(!source)return [];
@@ -186,8 +192,11 @@ function rebuildKokoroSentenceUnits(){
  autoReadNodes().forEach((node,nodeIndex)=>{
   splitSpeechSentences(node.innerText||'').forEach(text=>kokoroSentenceUnits.push({text,nodeIndex}));
  });
- kokoroSentenceIndex=0;
- autoReadIndex=kokoroSentenceUnits[0]?.nodeIndex||0;
+ kokoroSentenceIndex=kokoroSentenceUnits.findIndex(unit=>unit.nodeIndex>=autoReadIndex);
+ if(kokoroSentenceIndex<0)kokoroSentenceIndex=0;
+ while(kokoroSentenceIndex<kokoroSentenceUnits.length&&kokoroSentenceUnits[kokoroSentenceIndex].nodeIndex===autoReadIndex&&autoReadCharOffset>=kokoroSentenceUnits[kokoroSentenceIndex].text.length){autoReadCharOffset-=kokoroSentenceUnits[kokoroSentenceIndex].text.length;kokoroSentenceIndex++}
+ const unit=kokoroSentenceUnits[kokoroSentenceIndex];if(unit&&unit.nodeIndex===autoReadIndex&&autoReadCharOffset>0){unit.text=unit.text.slice(autoReadCharOffset);autoReadCharOffset=0}
+ if(unit)autoReadIndex=unit.nodeIndex;
 }
 function clearKokoroQueue(){kokoroQueueEpoch++;kokoroQueue.clear();kokoroQueueWorker=false;stopKokoro()}
 function fillKokoroQueue(){
@@ -296,7 +305,7 @@ function speakCurrentParagraph(){
  if(voice)utterance.voice=voice;
  utterance.rate=ttsSpeechRate();
  utterance.onstart=()=>setTTSStatus('Speaking'+(voice?.localService?' · Local':''));
- utterance.onboundary=event=>{if(currentUtterance!==utterance||!Number.isFinite(event.charIndex))return;const source=utterance.text||'';let start=0,end=source.length;const before=source.slice(0,event.charIndex);const last=Math.max(before.lastIndexOf('.'),before.lastIndexOf('!'),before.lastIndexOf('?'),before.lastIndexOf('。'),before.lastIndexOf('！'),before.lastIndexOf('？'));if(last>=0)start=last+1;const tail=source.slice(event.charIndex);const stops=[tail.indexOf('.'),tail.indexOf('!'),tail.indexOf('?'),tail.indexOf('。'),tail.indexOf('！'),tail.indexOf('？')].filter(x=>x>=0);if(stops.length)end=event.charIndex+Math.min(...stops)+1;highlightAutoReadSentence(source.slice(start,end).trim())};
+ utterance.onboundary=event=>{if(currentUtterance!==utterance||!Number.isFinite(event.charIndex))return;currentUtterance.charIndex=event.charIndex;autoReadCharOffset=event.charIndex;saveAutoReadCursor();const source=utterance.text||'';let start=0,end=source.length;const before=source.slice(0,event.charIndex);const last=Math.max(before.lastIndexOf('.'),before.lastIndexOf('!'),before.lastIndexOf('?'),before.lastIndexOf('。'),before.lastIndexOf('！'),before.lastIndexOf('？'));if(last>=0)start=last+1;const tail=source.slice(event.charIndex);const stops=[tail.indexOf('.'),tail.indexOf('!'),tail.indexOf('?'),tail.indexOf('。'),tail.indexOf('！'),tail.indexOf('？')].filter(x=>x>=0);if(stops.length)end=event.charIndex+Math.min(...stops)+1;highlightAutoReadSentence(source.slice(start,end).trim())};
  utterance.onend=()=>{if(currentUtterance!==utterance)return;currentUtterance=null;if(autoReadRunning&&!autoReadPaused)advanceAutoRead()};
  utterance.onerror=event=>{if(currentUtterance!==utterance)return;currentUtterance=null;setTTSStatus('Speech error · continuing focus mode');if(autoReadRunning&&!autoReadPaused){const chars=(node.innerText||'').length;const delay=Math.max(800,Math.min(60000,chars/autoReadCharsPerMinute(Number($('autoReadSpeed')?.value||55))*60000));autoReadTimer=setTimeout(advanceAutoRead,delay)}};
  currentUtterance=utterance;
@@ -316,7 +325,7 @@ function speakCurrentKokoroSentence(){
   if(currentUtterance!==marker||!autoReadRunning||autoReadPaused)return;
   if(!audio)throw new Error('No buffered audio for this sentence');
   marker.playing=true;
-  playKokoroAudio(audio,{onStatus:setTTSStatus}).then(()=>{
+  playKokoroAudio(audio,{onStatus:setTTSStatus,onProgress:seconds=>{if(currentUtterance!==marker)return;const ratio=Math.max(0,Math.min(0.999,seconds/Math.max(0.01,audio.audioSeconds||audio.samples.length/(audio.sampleRate||24000))));autoReadCharOffset=Math.floor(unit.text.length*ratio);saveAutoReadCursor()}}).then(()=>{
    if(currentUtterance!==marker)return;
    currentUtterance=null;
    if(autoReadRunning&&!autoReadPaused){
@@ -375,13 +384,13 @@ function scheduleAutoRead(){
 async function advanceAutoRead(){
  if(!autoReadRunning||autoReadPaused)return;
  clearTimeout(autoReadTimer);autoReadTimer=null;currentUtterance=null;
- autoReadIndex++;trimKokoroQueue();fillKokoroQueue();
+ autoReadIndex++;autoReadCharOffset=0;saveAutoReadCursor();trimKokoroQueue();fillKokoroQueue();
  const nodes=autoReadNodes();
  if(autoReadIndex>=nodes.length){
   if(state.chapter<state.book.chapters.length-1){
    await saveProgress();
    state.chapter++;
-   autoReadIndex=0;
+   autoReadIndex=0;autoReadCharOffset=0;kokoroSentenceIndex=0;
    drawReader();
    window.scrollTo({top:0,behavior:'auto'});
   }else{
@@ -398,7 +407,7 @@ export async function startAutoRead(){
   try{await loadKokoro(message=>setTTSStatus(message));populateKokoroVoices();}
   catch(error){setTTSStatus('Kokoro load failed · '+(error?.message||'check connection'));toast('Could not load Kokoro. Check your connection and try again.');return}
  }
- if(!autoReadRunning){autoReadRunning=true;autoReadPaused=false;if($('ttsEnabled')?.checked&&$('ttsEngine')?.value==='kokoro')rebuildKokoroSentenceUnits();else if(!autoReadNodes().length)autoReadIndex=0}
+ if(!autoReadRunning){loadAutoReadCursor();autoReadRunning=true;autoReadPaused=false;if($('ttsEnabled')?.checked&&$('ttsEngine')?.value==='kokoro')rebuildKokoroSentenceUnits();else if(!autoReadNodes().length)autoReadIndex=0}
  else if(autoReadPaused){autoReadPaused=false;if(currentUtterance?.kokoro&&currentUtterance.playing){resumeKokoro();fillKokoroQueue();updateAutoReadControls();return} if($('ttsEngine')?.value==='kokoro'&&kokoroSentenceUnits.length===0)rebuildKokoroSentenceUnits();if(currentUtterance?.kokoro)currentUtterance=null;if(ttsSupported()&&currentUtterance){window.speechSynthesis.resume();updateAutoReadControls();return}}
  updateAutoReadControls();
  scheduleAutoRead();
@@ -413,12 +422,13 @@ export function pauseAutoRead(){
  setTTSStatus('Paused');
 }
 export function stopAutoRead(showToast=true){
+ if(autoReadRunning&&currentUtterance&&!currentUtterance.kokoro&&Number.isFinite(currentUtterance.charIndex))autoReadCharOffset=currentUtterance.charIndex;
+ saveAutoReadCursor();
  clearTimeout(autoReadTimer);
  autoReadTimer=null;
  cancelSpeech();
  autoReadRunning=false;
  autoReadPaused=false;
- autoReadIndex=0;
  kokoroSentenceIndex=0;kokoroSentenceUnits=[];
  $('readingBody')?.classList.remove('focus-active');clearAutoReadSentence();
  $('readingBody')?.querySelectorAll('.focus-current').forEach(node=>node.classList.remove('focus-current'));
