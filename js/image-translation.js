@@ -23,7 +23,7 @@ export function renderImageTranslationOverlay(image){
  content.className='image-translation-result';
  content.textContent=text;
  details.append(summary,content);
- summary.addEventListener('click',()=>{summary.textContent=details.open?'English translation · Collapse':'English translation · Expand'});
+ 
  root.append(details);
 }
 async function prepareOcrImage(data){
@@ -48,9 +48,9 @@ async function prepareOcrImage(data){
 function cleanOcrLines(lines){
  const seen=new Set(),clean=[];
  for(const line of lines){
-  const value=String(line.text||'').replace(/\\s+/g,' ').trim();
+  const value=String(line.text||'').replace(/\s+/g,' ').trim();
   if(!value)continue;
-  const key=value.replace(/[\\s，。！？、,.!?]/g,'');
+  const key=value.replace(/[\s，。！？、,.!?]/g,'');
   if(seen.has(key))continue;
   seen.add(key);clean.push(value);
  }
