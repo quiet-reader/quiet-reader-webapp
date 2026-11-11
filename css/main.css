@@ -547,3 +547,21 @@ select:focus{animation:select-focus-in .2s ease both}
  .image-viewer-filmstrip{justify-content:flex-start;margin:12px auto 8px}
  .image-viewer-filmstrip button{flex-basis:54px;width:54px;height:54px}
 }
+
+
+/* Gallery viewer refinement: light transitions, full-frame thumbnails and pointer zoom/pan. */
+.image-viewer-backdrop{backdrop-filter:none!important}
+.image-viewer-stage{grid-template-columns:42px minmax(0,1fr) 42px;min-height:0;gap:8px}
+.image-viewer-arrow{display:grid;place-items:center;width:40px;height:54px;padding:0;border:1px solid #ffffff2b;border-radius:12px;background:#ffffff12;color:#fff;font-size:32px;line-height:1}
+.image-viewer-current{min-width:0}
+.image-viewer-image-wrap{height:min(70vh,760px);display:grid;place-items:center;overflow:hidden;position:relative;background:transparent;touch-action:none;cursor:grab}
+.image-viewer-stage.is-panning .image-viewer-image-wrap{cursor:grabbing}
+.image-viewer-current>.image-viewer-image-wrap>img{display:block;width:100%;height:100%;object-fit:contain;filter:none;transform-origin:0 0;transition:transform .08s linear;will-change:auto;user-select:none;-webkit-user-drag:none}
+.image-viewer-current figcaption{color:#eee}
+.image-viewer-filmstrip{justify-content:flex-start;gap:9px;padding:8px 4px 12px;margin:12px auto 8px;max-width:100%;overflow-x:auto}
+.image-viewer-filmstrip button{flex:0 0 66px;width:66px;height:66px;display:grid;place-items:center;padding:3px;background:#111;border-radius:7px;overflow:hidden}
+.image-viewer-filmstrip img{display:block;width:100%;height:100%;object-fit:contain}
+.image-viewer-filmstrip button.active{border:2px solid var(--accent);outline:0}
+.viewer-image-enter{animation:viewer-image-fade-in .24s ease both}
+@keyframes viewer-image-fade-in{from{opacity:0;transform:translate3d(var(--viewer-enter-x,0),0,0) scale(.992)}to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
+@media(max-width:650px){.image-viewer-stage{grid-template-columns:30px minmax(0,1fr) 30px;gap:3px}.image-viewer-arrow{width:29px;height:46px;font-size:25px}.image-viewer-image-wrap{height:54vh}.image-viewer-filmstrip{justify-content:flex-start}.image-viewer-filmstrip button{flex-basis:56px;width:56px;height:56px}}
