@@ -5,18 +5,29 @@ function textOffset(root,target,offset){
 }
 export function hideSelectionToolbar(){const bar=$('selectionToolbar');if(bar)bar.classList.add('hidden')}
 export function positionSelectionToolbar(){const bar=$('selectionToolbar'),selection=getSelection(),root=$('readingBody');if(!bar||!selection||selection.isCollapsed||!selection.rangeCount||!root)return hideSelectionToolbar();const range=selection.getRangeAt(0);if(!root.contains(range.commonAncestorContainer)||!selection.toString().trim())return hideSelectionToolbar();const rect=range.getBoundingClientRect(),novelName=$('selectionNovelName');if(novelName)novelName.textContent=state.book?.title||'';bar.classList.remove('hidden');const width=bar.offsetWidth,height=bar.offsetHeight;let left=rect.left+rect.width/2;left=Math.max(width/2+10,Math.min(innerWidth-width/2-10,left));let top=rect.top-height-12;if(top<8)top=Math.min(innerHeight-height-8,rect.bottom+12);bar.style.left=left+'px';bar.style.top=Math.max(8,top)+'px'}
-export async function addHighlight(color='yellow'){
- const selection=getSelection(),root=$('readingBody');if(!selection||selection.isCollapsed||!selection.rangeCount||!state.book||!root)return toast('Select text inside an open chapter');const range=selection.getRangeAt(0);if(!root.contains(range.commonAncestorContainer))return toast('Select text inside the chapter');const raw=selection.toString(),quote=raw.trim();if(!quote)return toast('Select some text first');const leading=raw.length-raw.trimStart().length,start=textOffset(root,range.startContainer,range.startOffset)+leading,end=start+quote.length;
+export async function addHighlight(color='yellow',savedRange=null){
+ const selection=getSelection(),root=$('readingBody');if(!state.book||!root)return toast('Open a chapter first');
+ const range=savedRange?.cloneRange?.()||(selection&&!selection.isCollapsed&&selection.rangeCount?selection.getRangeAt(0).cloneRange():null);
+ if(!range||!root.contains(range.startContainer)||!root.contains(range.endContainer))return toast('Select text inside the chapter');
+ const raw=range.toString(),quote=raw.trim();if(!quote)return toast('Select some text first');
+ const leading=raw.length-raw.trimStart().length,start=textOffset(root,range.startContainer,range.startOffset)+leading,end=start+quote.length;
  state.book.highlights=state.book.highlights||[];state.book.highlights.push({id:crypto.randomUUID?.()||String(Date.now())+Math.random(),chapter:state.chapter,text:quote,start,end,color,note:'',locked:false,created:Date.now()});
  try{await put(state.book);selection?.removeAllRanges();hideSelectionToolbar();renderHighlights();toast('Highlight saved')}catch(error){console.error(error);toast('Could not save highlight')}
+}
+export async function addParagraphHighlight(paragraph,color='yellow'){
+ const root=$('readingBody');if(!state.book||!root)return toast('Open a chapter first');
+ if(!paragraph||!root.contains(paragraph)||!paragraph.matches('p,li,blockquote,h1,h2,h3,h4,h5,h6,pre'))return toast('Tap inside a paragraph first');
+ const range=document.createRange();range.selectNodeContents(paragraph);const raw=range.toString(),quote=raw.trim();if(!quote)return toast('This paragraph has no text to highlight');
+ const leading=raw.length-raw.trimStart().length,start=textOffset(root,range.startContainer,range.startOffset)+leading,end=start+quote.length;
+ state.book.highlights=state.book.highlights||[];state.book.highlights.push({id:crypto.randomUUID?.()||String(Date.now())+Math.random(),chapter:state.chapter,text:quote,start,end,color,note:'',locked:false,created:Date.now(),scope:'paragraph'});
+ try{await put(state.book);hideSelectionToolbar();getSelection()?.removeAllRanges();renderHighlights();toast('Paragraph highlighted')}catch(error){console.error(error);toast('Could not save paragraph highlight')}
 }
 export function renderHighlights(){
  const root=$('readingBody');if(!root||!state.book)return;
  root.querySelectorAll('mark[data-highlight]').forEach(mark=>{const parent=mark.parentNode;if(!parent)return;while(mark.firstChild)parent.insertBefore(mark.firstChild,mark);mark.remove()});root.normalize();
  const saved=(state.book.highlights||[]).filter(m=>Number(m.chapter)===Number(state.chapter)&&m.text);if(!saved.length)return;
- const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];let total=0,node,lastBlock=null;
- const blockOf=n=>{let el=n.parentElement;while(el&&el!==root){if(/^(P|DIV|LI|BLOCKQUOTE|H[1-6]|PRE|SECTION|ARTICLE)$/.test(el.tagName))return el;el=el.parentElement}return root};
- while((node=walker.nextNode())){const block=blockOf(node);if(lastBlock&&block!==lastBlock)total++;const start=total;total+=node.nodeValue.length;nodes.push({node,start,end:total});lastBlock=block}
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];let total=0,node;
+ while((node=walker.nextNode())){const start=total;total+=node.nodeValue.length;nodes.push({node,start,end:total})}
  const fullText=nodes.map(x=>x.node.nodeValue).join('');
  const normalizeWithMap=value=>{let out='',map=[];for(let i=0;i<value.length;i++){const c=value[i];if(/\\s/.test(c)){if(!out.endsWith(' ')){out+=' ';map.push(i)}}else{out+=c;map.push(i)}}return {text:out,map}};
  const normalized=normalizeWithMap(fullText);
