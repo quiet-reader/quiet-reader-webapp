@@ -53,7 +53,10 @@ async function copyImage(image){
 }
 async function openImage(index){
  const book=state.book,gallery=ensureGallery(book),image=gallery.images[index];if(!image)return;
- // Browser fullscreen is best-effort; continue if the browser declines it.\n if(!document.fullscreenElement&&document.documentElement.requestFullscreen){try{const request=document.documentElement.requestFullscreen();request?.catch?.(()=>{})}catch(error){}}\n const now=Date.now();image.lastOpenedAt=now;gallery.lastOpenedAt=now;\n image.history=(image.history||[]).concat({openedAt:now}).slice(-10);
+ // Browser fullscreen is best-effort; continue if the browser declines it.
+ if(!document.fullscreenElement&&document.documentElement.requestFullscreen){try{const request=document.documentElement.requestFullscreen();request?.catch?.(()=>{})}catch(error){}}
+ const now=Date.now();image.lastOpenedAt=now;gallery.lastOpenedAt=now;
+ image.history=(image.history||[]).concat({openedAt:now}).slice(-10);
  gallery.history=gallery.history.concat({imageId:image.id,imageName:image.name||'Image',openedAt:now}).slice(-10);
  sliderIndex=index;await persist(book);renderGallery();showImageViewer(index);
 }
