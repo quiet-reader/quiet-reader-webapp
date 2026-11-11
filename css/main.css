@@ -154,3 +154,5 @@ html{scrollbar-color:color-mix(in srgb,var(--fg) 24%,var(--bg)) transparent;scro
 .reader-highlight-setting input[type=color]{width:100%;height:38px;padding:3px;cursor:pointer}
 .auto-read-sentence{background:var(--auto-read-highlight,#d7c477);color:#242019;border-radius:3px;box-shadow:0 0 0 2px var(--auto-read-highlight,#d7c477);padding:0 1px}
 .reading-body.focus-active p.focus-current{border-left-color:var(--auto-read-highlight,var(--accent))}
+
+.read-from-here{position:fixed;z-index:45;left:50%;top:auto;transform:translateX(-50%);padding:9px 16px;border-radius:999px;background:var(--accent);color:#242019;border:1px solid color-mix(in srgb,var(--accent) 70%,var(--fg));box-shadow:0 5px 22px #0005;font-weight:650;white-space:nowrap}.read-from-here.hidden{display:none}
