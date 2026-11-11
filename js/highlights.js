@@ -1,19 +1,30 @@
 import {state} from './state.js';import {put} from './db.js';import {$,esc,toast,modal} from './utils.js';import {openReader} from './reader.js';
-function textOffset(root,node,offset){const range=document.createRange();range.selectNodeContents(root);range.setEnd(node,offset);return range.toString().length}
+function textOffset(root,target,offset){const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let total=0,node;while((node=walker.nextNode())){if(node===target)return total+Math.max(0,Math.min(offset,node.nodeValue.length));total+=node.nodeValue.length}return total}
 export function hideSelectionToolbar(){const bar=$('selectionToolbar');if(bar)bar.classList.add('hidden')}
 export function positionSelectionToolbar(){const bar=$('selectionToolbar'),selection=getSelection(),root=$('readingBody');if(!bar||!selection||selection.isCollapsed||!selection.rangeCount||!root)return hideSelectionToolbar();const range=selection.getRangeAt(0);if(!root.contains(range.commonAncestorContainer)||!selection.toString().trim())return hideSelectionToolbar();const rect=range.getBoundingClientRect();bar.classList.remove('hidden');const width=bar.offsetWidth,height=bar.offsetHeight;let left=rect.left+rect.width/2;left=Math.max(width/2+10,Math.min(innerWidth-width/2-10,left));let top=rect.top-height-12;if(top<8)top=Math.min(innerHeight-height-8,rect.bottom+12);bar.style.left=left+'px';bar.style.top=Math.max(8,top)+'px'}
 export function addHighlight(color='yellow'){const selection=getSelection(),raw=selection?.toString()||'',quote=raw.trim();if(!quote)return toast('Select some text first');const range=selection.getRangeAt(0),root=$('readingBody');if(!root.contains(range.commonAncestorContainer))return toast('Select text inside the chapter');const leading=raw.length-raw.trimStart().length,start=textOffset(root,range.startContainer,range.startOffset)+leading,end=start+quote.length;state.book.highlights=state.book.highlights||[];state.book.highlights.push({id:crypto.randomUUID?.()||String(Date.now()),chapter:state.chapter,text:quote,start,end,color,note:'',created:Date.now()});put(state.book).then(()=>{selection.removeAllRanges();hideSelectionToolbar();renderHighlights();toast('Highlight saved')}).catch(error=>{console.error(error);toast('Could not save highlight')})}
 export function renderHighlights(){
  const root=$('readingBody');if(!root||!state.book)return;
- const marks=(state.book.highlights||[]).filter(m=>m.chapter===state.chapter&&Number.isInteger(m.start)&&Number.isInteger(m.end)&&m.end>m.start).sort((a,b)=>b.start-a.start);
- for(const m of marks){
-  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
-  const nodes=[];let total=0;
-  while(walker.nextNode()){const n=walker.currentNode;const start=total;total+=n.nodeValue.length;nodes.push({node:n,start,end:total})}
-  for(const item of nodes.reverse()){
-   const from=Math.max(m.start,item.start),to=Math.min(m.end,item.end);
-   if(to<=from||!item.node.isConnected)continue;
-   try{const range=document.createRange();range.setStart(item.node,from-item.start);range.setEnd(item.node,to-item.start);const mark=document.createElement('mark');mark.dataset.highlight=m.id;mark.dataset.color=m.color||'yellow';range.surroundContents(mark)}catch(error){console.warn('Could not render highlight',m.id,error)}
+ // Remove rendered wrappers first, keeping the original text stream intact.
+ root.querySelectorAll('mark[data-highlight]').forEach(mark=>{const parent=mark.parentNode;if(!parent)return;while(mark.firstChild)parent.insertBefore(mark.firstChild,mark);mark.remove()});
+ root.normalize();
+ const marks=(state.book.highlights||[]).filter(m=>m.chapter===state.chapter&&Number.isInteger(m.start)&&Number.isInteger(m.end)&&m.end>m.start).sort((a,b)=>a.start-b.start);
+ if(!marks.length)return;
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];let total=0,node;
+ while((node=walker.nextNode())){const start=total;total+=node.nodeValue.length;nodes.push({node,start,end:total})}
+ // Apply from the end of the document backwards so earlier offsets never shift.
+ for(const item of nodes.reverse()){
+  if(!item.node.isConnected)continue;
+  const intervals=marks.map(mark=>({mark,from:Math.max(mark.start,item.start),to:Math.min(mark.end,item.end)})).filter(x=>x.to>x.from).sort((a,b)=>b.from-a.from);
+  for(const part of intervals){
+   const localStart=part.from-item.start,localEnd=part.to-item.start;
+   if(localStart<0||localEnd>item.node.nodeValue.length||localEnd<=localStart)continue;
+   const tail=item.node.splitText(localEnd);
+   const selected=item.node.splitText(localStart);
+   const mark=document.createElement('mark');mark.dataset.highlight=part.mark.id;mark.dataset.color=part.mark.color||'yellow';
+   selected.parentNode.replaceChild(mark,selected);mark.appendChild(selected);
+   // Keep the trailing node connected; splitText already inserted it.
+   void tail;
   }
  }
 }
