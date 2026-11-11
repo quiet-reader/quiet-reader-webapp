@@ -22,7 +22,7 @@ async function prepareOcrImage(data){
  const source=new Image();
  source.src=data;
  await new Promise((resolve,reject)=>{if(source.complete&&source.naturalWidth)resolve();else{source.onload=resolve;source.onerror=()=>reject(new Error('Could not prepare image for OCR.'))}});
- const scale=Math.min(2.5,2600/Math.max(source.naturalWidth,source.naturalHeight),Math.max(1,1800/Math.max(source.naturalWidth,source.naturalHeight)));
+ const scale=Math.max(1,Math.min(2.5,2600/Math.max(source.naturalWidth,source.naturalHeight)));
  const canvas=document.createElement('canvas');
  canvas.width=Math.max(1,Math.round(source.naturalWidth*scale));
  canvas.height=Math.max(1,Math.round(source.naturalHeight*scale));
