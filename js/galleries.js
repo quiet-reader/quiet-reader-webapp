@@ -31,7 +31,7 @@ export function createGallery(){
    book.gallery={images:[],view:'grid',history:[],createdAt:Date.now(),lastOpenedAt:null};
    for(const file of selectedFiles){try{book.gallery.images.push({id:uid(),name:(file.webkitRelativePath||file.name).split('/').pop(),data:await dataURL(file),mime:file.type||'application/octet-stream',size:file.size,addedAt:Date.now(),lastOpenedAt:null,notes:'',locked:false,history:[]})}catch(error){console.warn('Could not import gallery image',file.name,error)}}
    if(book.gallery.images[0])book.cover=book.gallery.images[0].data;
-   await put(book);await refresh();closeModal();openBook(book.id);setBookTab('gallery');renderGallery();toast('Gallery created · '+book.gallery.images.length+' images');
+   addEditEvent(book,'Gallery created',book.gallery.images.length+' images');await put(book);await refresh();closeModal();openBook(book.id);setBookTab('gallery');renderGallery();toast('Gallery created · '+book.gallery.images.length+' images');
   };
  });
 }
