@@ -7,17 +7,28 @@ let sliderIndex=0;
 const imageFiles=files=>[...files].filter(file=>file.type?.startsWith('image/')||/\.(png|jpe?g|gif|webp|avif|svg|bmp)$/i.test(file.name)).sort((a,b)=>new Intl.Collator(undefined,{numeric:true,sensitivity:'base'}).compare(a.webkitRelativePath||a.name,b.webkitRelativePath||b.name));
 
 export function createGallery(){
- modal('Create an image gallery','<div class="stack"><label>Gallery title<input id="newGalleryTitle" placeholder="Gallery title"></label><label>Author / source (optional)<input id="newGalleryAuthor"></label><label>Tags (comma-separated)<input id="newGalleryTags" placeholder="art, reference, characters"></label><p class="muted tiny">Create the gallery first, then add individual images or an entire folder. GIFs remain animated.</p><button id="createGalleryNow" class="primary">Create gallery</button></div>',()=>{
+ let selectedFiles=[];
+ const body='<div class="stack"><label>Gallery title<input id="newGalleryTitle" placeholder="Gallery title"></label><label>Author / source (optional)<input id="newGalleryAuthor"></label><label>Tags (comma-separated)<input id="newGalleryTags" placeholder="art, reference, characters"></label><p class="muted tiny">Choose one or more images, or select a folder. GIFs remain animated. You can also create an empty gallery and add images later.</p><div class="row wrap"><button type="button" id="selectGalleryImages">Choose images</button><button type="button" id="selectGalleryFolder">Choose folder</button><span id="gallerySelectionCount" class="tiny muted">No images selected</span></div><input id="newGalleryImageFiles" type="file" accept="image/*" multiple hidden><input id="newGalleryFolderFiles" type="file" accept="image/*" webkitdirectory directory multiple hidden><button id="createGalleryNow" class="primary">Create gallery</button></div>';
+ modal('Create an image gallery',body,()=>{
+  $('selectGalleryImages').onclick=()=>$('newGalleryImageFiles').click();
+  $('selectGalleryFolder').onclick=()=>$('newGalleryFolderFiles').click();
+  const updateSelection=files=>{selectedFiles=imageFiles(files);$('gallerySelectionCount').textContent=selectedFiles.length+' image'+(selectedFiles.length===1?'':'s')+' selected'};
+  $('newGalleryImageFiles').onchange=e=>updateSelection(e.target.files);
+  $('newGalleryFolderFiles').onchange=e=>updateSelection(e.target.files);
   $('createGalleryNow').onclick=async()=>{
    const book=freshBook('gallery',$('newGalleryTitle').value.trim()||'Untitled gallery');
    book.author=$('newGalleryAuthor').value.trim();
    book.tags=[...new Set($('newGalleryTags').value.split(',').map(tag=>tag.trim().replace(/^#/,'')).filter(Boolean))];
    book.gallery={images:[],view:'grid'};
-   await put(book);await refresh();closeModal();openBook(book.id);setBookTab('gallery');renderGallery();toast('Gallery created');
+   for(const file of selectedFiles){
+    try{book.gallery.images.push({id:uid(),name:(file.webkitRelativePath||file.name).split('/').pop(),data:await dataURL(file),mime:file.type||'application/octet-stream',size:file.size,addedAt:Date.now()})}
+    catch(error){console.warn('Could not import gallery image',file.name,error)}
+   }
+   if(book.gallery.images[0])book.cover=book.gallery.images[0].data;
+   await put(book);await refresh();closeModal();openBook(book.id);setBookTab('gallery');renderGallery();toast('Gallery created · '+book.gallery.images.length+' images');
   };
  });
 }
-
 export function addGalleryImages(){if(!state.book||state.book.locked)return toast('Unlock editing first');$('galleryImageFiles')?.click()}
 export function addGalleryFolder(){if(!state.book||state.book.locked)return toast('Unlock editing first');$('galleryFolderFiles')?.click()}
 
