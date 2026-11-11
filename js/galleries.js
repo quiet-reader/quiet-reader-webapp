@@ -2,6 +2,7 @@ import {state,freshBook} from './state.js';
 import {put} from './db.js';
 import {$,esc,toast,modal,closeModal,dataURL,uid} from './utils.js';
 import {refresh,openBook,setBookTab,drawBook} from './library.js';import {addEditEvent} from './history.js';
+import {openImageTranslation,renderImageTranslationOverlay} from './image-translation.js';
 
 let sliderIndex=0;
 let viewerKeyHandler=null;let selectedImageIds=new Set();
@@ -65,11 +66,12 @@ function showImageViewer(index){
  if(!images.length)return;
  sliderIndex=Math.max(0,Math.min(images.length-1,index));
  let viewerZoom=1,panX=0,panY=0,dragState=null;
- const body='<div class="image-viewer"><div class="image-viewer-stage" id="imageViewerStage"></div><button type="button" class="image-viewer-thumbnails-toggle" data-viewer-thumbnails>Hide thumbnails</button><div class="image-viewer-filmstrip" id="imageViewerFilmstrip"></div><div class="image-viewer-meta" id="imageViewerMeta"></div><details class="image-viewer-details" id="imageViewerDetails"><summary>Image notes & details</summary><div id="imageViewerDetailContent"></div></details></div>';
+ const body='<div class="image-viewer"><div class="image-viewer-stage" id="imageViewerStage"></div><button type="button" class="image-translate-trigger" data-image-translate title="Translate image text">文　Translate image</button><button type="button" class="image-viewer-thumbnails-toggle" data-viewer-thumbnails>Hide thumbnails</button><div class="image-viewer-filmstrip" id="imageViewerFilmstrip"></div><div class="image-viewer-meta" id="imageViewerMeta"></div><details class="image-viewer-details" id="imageViewerDetails"><summary>Image notes & details</summary><div id="imageViewerDetailContent"></div></details></div>';
  const applyImageTransform=()=>{
   const image=$('imageViewerImage');if(!image)return;
   image.style.transform='translate3d('+panX+'px,'+panY+'px,0) scale('+viewerZoom+')';
   const label=document.querySelector('.image-viewer-zoom-label');if(label)label.textContent='Zoom: '+Math.round(viewerZoom*100)+'%';
+  renderImageTranslationOverlay(images[sliderIndex],{panX,panY,viewerZoom});
  };
  const updateViewer=(direction=0)=>{
   const current=images[sliderIndex],prev=images[sliderIndex-1],next=images[sliderIndex+1],stage=$('imageViewerStage');if(!stage)return;
@@ -92,6 +94,7 @@ function showImageViewer(index){
   host.onclick=async event=>{
    if(event.target.closest('[data-viewer-prev]')){await setViewerIndex(sliderIndex-1,-1);return}
    if(event.target.closest('[data-viewer-next]')){await setViewerIndex(sliderIndex+1,1);return}
+   if(event.target.closest('[data-image-translate]')){await openImageTranslation(images[sliderIndex]);return}
    const zoomButton=event.target.closest('[data-viewer-zoom]');if(zoomButton){const action=zoomButton.dataset.viewerZoom;viewerZoom=action==='fit'?1:Math.max(1,Math.min(8,viewerZoom*(action==='in'?1.5:1/1.5)));if(viewerZoom===1){panX=0;panY=0}applyImageTransform();return}
    const thumbToggle=event.target.closest('[data-viewer-thumbnails]');if(thumbToggle){const strip=$('imageViewerFilmstrip'),hidden=strip.hidden;strip.hidden=!hidden;thumbToggle.textContent=hidden?'Hide thumbnails':'Show thumbnails';return}
    const thumb=event.target.closest('[data-viewer-index]');if(thumb){await setViewerIndex(Number(thumb.dataset.viewerIndex),Number(thumb.dataset.viewerIndex)>sliderIndex?1:-1);return}
