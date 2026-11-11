@@ -60,7 +60,7 @@ export function setBookTab(tab){
 export async function saveBookNotes(){
  if(!state.book)return;
  state.book.notes=$('bookNotes').value;
- state.book.updated=Date.now();
+ state.book.updated=Date.now();addEditEvent(state.book,'Novel notes edited','Notes updated');
  await put(state.book);
  toast('Notes saved');
 }
