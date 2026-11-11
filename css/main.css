@@ -663,3 +663,9 @@ select:focus{animation:select-focus-in .2s ease both}
  .image-viewer-arrow{opacity:.1!important}
  .gallery-history-modal #modalClose{transform:translateY(-9px)!important}
 }
+
+/* OCR translation is available only inside the fullscreen gallery viewer. */
+.image-translate-trigger{align-self:center!important;flex:0 0 auto!important;margin:0 auto 2px!important;padding:4px 11px!important;border:1px solid transparent!important;background:transparent!important;color:var(--fg)!important;font-size:11px!important;opacity:.1!important;transition:opacity .18s ease,background .18s ease!important}
+.image-translate-trigger:hover,.image-translate-trigger:focus-visible{opacity:1!important;background:var(--panel2)!important;border-color:var(--line)!important}
+.image-translation-overlay{position:absolute;z-index:5;pointer-events:none;transform-origin:center center;overflow:visible}
+.image-translation-label{position:absolute;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:1px 3px;border-radius:2px;background:rgba(12,12,15,.93);color:#fff;font:600 clamp(9px,1.25vw,18px)/1.2 Arial,sans-serif;text-align:center;overflow-wrap:anywhere;box-shadow:0 0 1px #000;min-height:12px}
