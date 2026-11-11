@@ -156,3 +156,23 @@ html{scrollbar-color:color-mix(in srgb,var(--fg) 24%,var(--bg)) transparent;scro
 .reading-body.focus-active p.focus-current{border-left-color:var(--auto-read-highlight,var(--accent))}
 
 .read-from-here{position:fixed;z-index:45;left:50%;top:auto;transform:translateX(-50%);padding:9px 16px;border-radius:999px;background:var(--accent);color:#242019;border:1px solid color-mix(in srgb,var(--accent) 70%,var(--fg));box-shadow:0 5px 22px #0005;font-weight:650;white-space:nowrap}.read-from-here.hidden{display:none}
+
+
+/* Novel index tags and calmer select controls */
+.detail-tags{margin:10px 0 0;min-height:0}
+.detail-tags:empty{display:none}
+.book-detail-actions{margin-top:10px;flex-wrap:wrap}
+select{appearance:none;-webkit-appearance:none;max-width:100%;padding-right:36px;background-color:var(--panel);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a9a9a9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease}
+select:hover{border-color:color-mix(in srgb,var(--accent) 70%,var(--line))}
+select:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+.modal-back{animation:modal-scrim-in .18s ease both}
+.modal{animation:modal-pop-in .2s cubic-bezier(.2,.8,.2,1) both;transform-origin:center}
+@keyframes modal-scrim-in{from{opacity:0}to{opacity:1}}
+@keyframes modal-pop-in{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* Read-from-here is an inline hover cue, only while TTS is actively speaking */
+.read-from-here{display:none!important}
+.reading-body.focus-active p{position:relative;transition:color .16s ease,background-color .16s ease,opacity .16s ease}
+.reading-body.focus-active p.read-from-here-hover{color:color-mix(in srgb,var(--auto-read-highlight,#d7c477) 76%,var(--fg));background:color-mix(in srgb,var(--auto-read-highlight,#d7c477) 8%,transparent);border-radius:4px}
+.reading-body.focus-active p.read-from-here-hover::after{content:"▶ Read from here";display:inline-block;margin:5px 0 0 8px;padding:3px 8px;border:1px solid color-mix(in srgb,var(--auto-read-highlight,#d7c477) 45%,transparent);border-radius:5px;background:color-mix(in srgb,var(--auto-read-highlight,#d7c477) 12%,var(--bg));color:var(--auto-read-highlight,#d7c477);font-size:11px;line-height:1.4;vertical-align:middle;opacity:.95}
+.reading-body.focus-active p.read-from-here-hover{cursor:pointer}
