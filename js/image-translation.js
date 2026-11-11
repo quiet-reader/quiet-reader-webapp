@@ -3,32 +3,20 @@ import {translateImageText,getImageTranslationSources} from './translation.js';
 
 const overlays=new Map();
 let worker=null,workerLanguage='';
-export function renderImageTranslationOverlay(image,transform={panX:0,panY:0,viewerZoom:1}){
- const root=$('imageTranslationOverlay'),img=$('imageViewerImage');if(!root||!img)return;
- const items=overlays.get(image?.id)||[];
- const draw=()=>{
-  if(!img.isConnected||!img.naturalWidth||!img.naturalHeight)return;
-  const width=img.clientWidth,height=img.clientHeight;
-  const scale=Math.min(width/img.naturalWidth,height/img.naturalHeight);
-  const renderedWidth=img.naturalWidth*scale,renderedHeight=img.naturalHeight*scale;
-  const offsetX=(width-renderedWidth)/2,offsetY=(height-renderedHeight)/2;
-  root.style.inset='0';
-  root.style.width='100%';root.style.height='100%';
-  root.innerHTML=items.map(item=>{
-   const imageLeft=(offsetX+item.left*renderedWidth)/width*100;
-   const imageTop=(offsetY+item.top*renderedHeight)/height*100;
-   const originalWidth=item.width*renderedWidth/width*100,originalHeight=item.height*renderedHeight/height*100;
-   // English is often much wider/taller than the source glyphs. Expand each
-   // OCR box around its original position so the translation cannot be clipped.
-   const boxWidth=Math.min(72,Math.max(originalWidth,32));
-   const boxHeight=Math.min(28,Math.max(originalHeight,8));
-   const left=Math.max(0,Math.min(100-boxWidth,imageLeft-(boxWidth-originalWidth)/2));
-   const top=Math.max(0,Math.min(100-boxHeight,imageTop-(boxHeight-originalHeight)/2));
-   return '<div class="image-translation-label" style="left:'+left+'%;top:'+top+'%;width:'+boxWidth+'%;height:'+boxHeight+'%">'+esc(item.text)+'</div>';
-  }).join('');
-  root.style.transform='translate3d('+transform.panX+'px,'+transform.panY+'px,0) scale('+transform.viewerZoom+')';
- };
- if(img.complete)draw();else img.addEventListener('load',draw,{once:true});
+export function clearImageTranslationOverlay(imageId){
+ if(imageId)overlays.delete(imageId);else overlays.clear();
+ const root=$('imageTranslationOverlay');if(root)root.replaceChildren();
+}
+export function renderImageTranslationOverlay(image){
+ const root=$('imageTranslationOverlay');if(!root)return;
+ const text=overlays.get(image?.id)||'';
+ root.replaceChildren();
+ if(!text)return;
+ const panel=document.createElement('div');
+ panel.className='image-translation-result';
+ panel.setAttribute('role','status');
+ panel.textContent=text;
+ root.append(panel);
 }
 export function openImageTranslation(image){
  const sources=getImageTranslationSources();
@@ -51,20 +39,14 @@ export function openImageTranslation(image){
    if(!worker||workerLanguage!==language){if(worker)await worker.terminate();worker=await module.createWorker(language,1,{logger:event=>{if(event.status)progress.textContent='OCR: '+event.status+(event.progress?' '+Math.round(event.progress*100)+'%':'')}});workerLanguage=language}
    progress.textContent='Recognizing text…';
    const result=await worker.recognize(image.data);
-   const lines=(result.data.lines||[]).filter(line=>line.text?.trim()&&line.confidence>=25);
+   const lines=(result.data.lines||[]).filter(line=>line.text?.trim()&&line.confidence>=15);
    if(!lines.length)throw new Error('No readable text detected. Try another language or a clearer image.');
    progress.textContent='Translating '+lines.length+' detected regions to English…';
    const joined=lines.map(line=>line.text.trim()).join('\n');
    const translated=await translateImageText(joined,sourceId);
-   const width=result.data.imageSize?.width||result.data.width||1,height=result.data.imageSize?.height||result.data.height||1;
-   let translatedLines=translated.split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
-   if(translatedLines.length!==lines.length){
-    const box={left:Math.min(...lines.map(line=>line.bbox.x0))/width,top:Math.min(...lines.map(line=>line.bbox.y0))/height,width:(Math.max(...lines.map(line=>line.bbox.x1))-Math.min(...lines.map(line=>line.bbox.x0)))/width,height:(Math.max(...lines.map(line=>line.bbox.y1))-Math.min(...lines.map(line=>line.bbox.y0)))/height,text:translated};
-    overlays.set(image.id,[box]);
-   }else{
-    overlays.set(image.id,lines.map((line,index)=>({left:line.bbox.x0/width,top:line.bbox.y0/height,width:(line.bbox.x1-line.bbox.x0)/width,height:(line.bbox.y1-line.bbox.y0)/height,text:translatedLines[index]||translated})));
-   }
-   dismiss();renderImageTranslationOverlay(image);toast('Image translated · '+lines.length+' regions');
+   if(!translated.trim())throw new Error('The translation provider returned empty text. Try another source.');
+   overlays.set(image.id,translated.trim());
+   dismiss();renderImageTranslationOverlay(image);toast('Image translated · '+lines.length+' text lines');
   }catch(error){progress.textContent=error.message||'Image translation failed';button.disabled=false}
  };
 }
