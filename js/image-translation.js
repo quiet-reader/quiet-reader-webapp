@@ -5,7 +5,7 @@ const overlays=new Map();
 let worker=null,workerLanguage='';
 export function clearImageTranslationOverlay(imageId){
  if(imageId)overlays.delete(imageId);else overlays.clear();
- const root=$('imageTranslationOverlay');if(root)root.replaceChildren();
+ const root=$('imageTranslationPanel');if(root){root.replaceChildren();root.hidden=true;}
 }
 export function renderImageTranslationOverlay(image){
  const root=$('imageTranslationPanel');
