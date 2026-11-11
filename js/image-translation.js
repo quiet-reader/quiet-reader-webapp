@@ -35,7 +35,7 @@ export function openImageTranslation(image){
     const joined=lines.map(line=>line.text.trim()).join('\n');
     const translated=await translateImageText(joined,sourceId);
     let translatedLines=translated.split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
-    if(translatedLines.length!==lines.length)translatedLines=lines.map((line,index)=>translatedLines[index]||translated);
+    if(translatedLines.length!==lines.length){const box={left:Math.min(...lines.map(line=>line.bbox.x0))/width,top:Math.min(...lines.map(line=>line.bbox.y0))/height,width:(Math.max(...lines.map(line=>line.bbox.x1))-Math.min(...lines.map(line=>line.bbox.x0)))/width,height:(Math.max(...lines.map(line=>line.bbox.y1))-Math.min(...lines.map(line=>line.bbox.y0)))/height,text:translated};overlays.set(image.id,[box]);closeModal();renderImageTranslationOverlay(image);toast('Image translated');return}
     const width=result.data.imageSize?.width||result.data.width||1,height=result.data.imageSize?.height||result.data.height||1;
     const next=lines.map((line,index)=>({left:line.bbox.x0/width,top:line.bbox.y0/height,width:(line.bbox.x1-line.bbox.x0)/width,height:(line.bbox.y1-line.bbox.y0)/height,text:translatedLines[index]||translated}));
     overlays.set(image.id,next);closeModal();renderImageTranslationOverlay(image);toast('Image translated · '+lines.length+' regions');
