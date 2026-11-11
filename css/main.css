@@ -279,3 +279,11 @@ select:focus{animation:select-focus-in .2s ease both}
 .select-popover-wrap.is-open{z-index:100}
 .saved-mark-actions button:disabled{opacity:.42;cursor:not-allowed;filter:none}
 .saved-mark-lock{font-size:11px;color:var(--accent);font-weight:700}
+
+/* Appearance theme selector: let its complete popup escape the modal scroll viewport. */
+.modal:has(#appearanceTheme){overflow:visible}
+.modal:has(#appearanceTheme) #appearanceTheme{width:100%}
+.modal:has(#appearanceTheme) .select-popover-wrap{display:flex;width:100%;max-width:none}
+.modal:has(#appearanceTheme) .select-popover-trigger{width:100%;min-height:46px;font-size:14px;padding:10px 13px}
+.modal:has(#appearanceTheme) .select-popover{width:100%;min-width:100%;max-width:100%;max-height:none;overflow:visible}
+.modal:has(#appearanceTheme) .select-popover button{min-height:44px;font-size:14px;padding:11px 14px}
