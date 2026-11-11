@@ -176,3 +176,5 @@ select:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,v
 .reading-body.focus-active p.read-from-here-hover{color:color-mix(in srgb,var(--auto-read-highlight,#d7c477) 76%,var(--fg));background:color-mix(in srgb,var(--auto-read-highlight,#d7c477) 8%,transparent);border-radius:4px}
 .reading-body.focus-active p.read-from-here-hover::after{content:"▶ Read from here";display:inline-block;margin:5px 0 0 8px;padding:3px 8px;border:1px solid color-mix(in srgb,var(--auto-read-highlight,#d7c477) 45%,transparent);border-radius:5px;background:color-mix(in srgb,var(--auto-read-highlight,#d7c477) 12%,var(--bg));color:var(--auto-read-highlight,#d7c477);font-size:11px;line-height:1.4;vertical-align:middle;opacity:.95}
 .reading-body.focus-active p.read-from-here-hover{cursor:pointer}
+
+.reading-body.focus-active p.read-from-here-hover{opacity:.52}
