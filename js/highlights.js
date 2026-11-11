@@ -5,26 +5,27 @@ export function positionSelectionToolbar(){const bar=$('selectionToolbar'),selec
 export function addHighlight(color='yellow'){const selection=getSelection(),raw=selection?.toString()||'',quote=raw.trim();if(!quote)return toast('Select some text first');const range=selection.getRangeAt(0),root=$('readingBody');if(!root.contains(range.commonAncestorContainer))return toast('Select text inside the chapter');const leading=raw.length-raw.trimStart().length,start=textOffset(root,range.startContainer,range.startOffset)+leading,end=start+quote.length;state.book.highlights=state.book.highlights||[];state.book.highlights.push({id:crypto.randomUUID?.()||String(Date.now()),chapter:state.chapter,text:quote,start,end,color,note:'',created:Date.now()});put(state.book).then(()=>{selection.removeAllRanges();hideSelectionToolbar();renderHighlights();toast('Highlight saved')}).catch(error=>{console.error(error);toast('Could not save highlight')})}
 export function renderHighlights(){
  const root=$('readingBody');if(!root||!state.book)return;
- // Remove rendered wrappers first, keeping the original text stream intact.
  root.querySelectorAll('mark[data-highlight]').forEach(mark=>{const parent=mark.parentNode;if(!parent)return;while(mark.firstChild)parent.insertBefore(mark.firstChild,mark);mark.remove()});
  root.normalize();
- const marks=(state.book.highlights||[]).filter(m=>m.chapter===state.chapter&&Number.isInteger(m.start)&&Number.isInteger(m.end)&&m.end>m.start).sort((a,b)=>a.start-b.start);
+ const marks=(state.book.highlights||[]).filter(m=>m.chapter===state.chapter&&Number.isInteger(m.start)&&Number.isInteger(m.end)&&m.end>m.start);
  if(!marks.length)return;
  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];let total=0,node;
  while((node=walker.nextNode())){const start=total;total+=node.nodeValue.length;nodes.push({node,start,end:total})}
- // Apply from the end of the document backwards so earlier offsets never shift.
  for(const item of nodes.reverse()){
   if(!item.node.isConnected)continue;
-  const intervals=marks.map(mark=>({mark,from:Math.max(mark.start,item.start),to:Math.min(mark.end,item.end)})).filter(x=>x.to>x.from).sort((a,b)=>b.from-a.from);
-  for(const part of intervals){
-   const localStart=part.from-item.start,localEnd=part.to-item.start;
-   if(localStart<0||localEnd>item.node.nodeValue.length||localEnd<=localStart)continue;
-   const tail=item.node.splitText(localEnd);
+  const relevant=marks.filter(mark=>mark.end>item.start&&mark.start<item.end);
+  if(!relevant.length)continue;
+  const boundaries=[...new Set([item.start,item.end,...relevant.flatMap(mark=>[Math.max(item.start,mark.start),Math.min(item.end,mark.end)])])].sort((a,b)=>b-a);
+  for(let i=0;i<boundaries.length-1;i++){
+   const from=boundaries[i+1],to=boundaries[i];if(to<=from)continue;
+   const chosen=relevant.filter(mark=>mark.start<=from&&mark.end>=to).sort((a,b)=>(b.created||0)-(a.created||0))[0];
+   if(!chosen)continue;
+   const localStart=from-item.start,localEnd=to-item.start;
+   if(localEnd>item.node.nodeValue.length||localStart<0)continue;
+   item.node.splitText(localEnd);
    const selected=item.node.splitText(localStart);
-   const mark=document.createElement('mark');mark.dataset.highlight=part.mark.id;mark.dataset.color=part.mark.color||'yellow';
+   const mark=document.createElement('mark');mark.dataset.highlight=chosen.id;mark.dataset.color=chosen.color||'yellow';
    selected.parentNode.replaceChild(mark,selected);mark.appendChild(selected);
-   // Keep the trailing node connected; splitText already inserted it.
-   void tail;
   }
  }
 }
