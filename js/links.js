@@ -38,7 +38,7 @@ export function manageChapterLinks(book=state.book,index=state.chapter){
 
 export function renderReaderLinks(){
  const host=$('chapterLinkNav');if(!host)return;const chapter=state.book?.chapters?.[state.chapter];const links=chapter?.links||[];
- host.innerHTML=links.map((l,i)=>{const target=books().find(b=>b.id===l.targetBookId),idx=Number(l.targetChapterIndex);if(!target?.chapters?.[idx])return '';const direction=l.type==='previous'?'←':l.type==='next'?'→':'↔';return '<button type="button" class="linked-chapter '+(l.type==='counterpart'?'counterpart':'sequence')+'" data-open-linked-book="'+esc(target.id)+'" data-open-linked-chapter="'+idx+'" title="'+esc(title(target)+' · '+chapterTitle(target,idx))+'"><span>'+direction+'</span><span class="linked-chapter-text">'+esc(title(target))+'<small>'+esc(chapterTitle(target,idx))+'</small></span></button>'}).join('');
- host.classList.toggle('hidden',!host.children.length);
+ host.innerHTML=links.map((l,i)=>{const target=books().find(b=>b.id===l.targetBookId),idx=Number(l.targetChapterIndex);if(!target?.chapters?.[idx])return '';const direction=l.type==='previous'?'←':l.type==='next'?'→':'↔';return '<button type="button" class="linked-chapter '+(l.type==='counterpart'?'counterpart':'sequence')+'" data-open-linked-book="'+esc(target.id)+'" data-open-linked-chapter="'+idx+'" title="'+esc(title(target)+' · '+chapterTitle(target,idx))+'"><span>'+direction+'</span><span class="linked-chapter-text">'+esc(title(target))+'<small>'+esc(chapterTitle(target,idx))+'</small></span></button>'}).join('')+'<button type="button" class="chapter-link-manage" data-manage-current-chapter>＋ Manage links</button>';
+ host.classList.toggle('hidden',false);
 }
 export function openLinkedChapter(bookId,index){const target=books().find(b=>b.id===bookId);if(!target)return toast('Linked novel is no longer in your library');state.book=target;openReader(Number(index));}
