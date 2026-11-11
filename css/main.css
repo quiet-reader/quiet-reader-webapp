@@ -272,3 +272,10 @@ select:focus{animation:select-focus-in .2s ease both}
 .chapter-history-entry p{white-space:pre-wrap;overflow-wrap:anywhere;max-height:150px;overflow:auto;margin:8px 0 0;font-size:12px;line-height:1.55;color:var(--muted)}
 .chapter-history-entry.current{background:color-mix(in srgb,var(--accent) 6%,transparent);padding:12px;border-radius:7px}
 @media(max-width:650px){.chapter-index-row{gap:6px}.chapter-index-row .chapter-name{flex-basis:100%}.chapter-added-date{font-size:9px}.chapter-index-row>button{padding:6px 8px;font-size:11px}}
+
+/* Expanded option panels: size to their contents, with a generous viewport cap. */
+.select-popover{width:max-content;min-width:max(100%,220px);max-width:min( min(420px, calc(100vw - 28px)), 92vw);max-height:min( min(68vh, 560px), 560px);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
+.select-popover button{white-space:normal;line-height:1.45;padding:10px 12px;font-size:13px}
+.select-popover-wrap.is-open{z-index:100}
+.saved-mark-actions button:disabled{opacity:.42;cursor:not-allowed;filter:none}
+.saved-mark-lock{font-size:11px;color:var(--accent);font-weight:700}
