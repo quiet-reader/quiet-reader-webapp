@@ -53,7 +53,7 @@ async function copyImage(image){
 }
 async function openImage(index){
  const book=state.book,gallery=ensureGallery(book),image=gallery.images[index];if(!image)return;
- const now=Date.now();image.lastOpenedAt=now;gallery.lastOpenedAt=now;
+ // Request browser fullscreen directly from the image-click gesture; unsupported browsers keep the in-app full-screen overlay.\n if(!document.fullscreenElement&&document.documentElement.requestFullscreen){try{const request=document.documentElement.requestFullscreen();request?.catch?.(()=>{})}catch(error){}}\n const now=Date.now();image.lastOpenedAt=now;gallery.lastOpenedAt=now;
  image.history=(image.history||[]).concat({openedAt:now}).slice(-10);
  gallery.history=gallery.history.concat({imageId:image.id,imageName:image.name||'Image',openedAt:now}).slice(-10);
  sliderIndex=index;await persist(book);renderGallery();showImageViewer(index);
@@ -63,7 +63,7 @@ function showImageViewer(index){
  if(!images.length)return;
  sliderIndex=Math.max(0,Math.min(images.length-1,index));
  let viewerZoom=1,panX=0,panY=0,dragState=null;
- const body='<div class="image-viewer"><div class="image-viewer-stage" id="imageViewerStage"></div><div class="image-viewer-filmstrip" id="imageViewerFilmstrip"></div><div class="image-viewer-meta" id="imageViewerMeta"></div><details class="image-viewer-details" open id="imageViewerDetails"><summary>Image notes & details</summary><div id="imageViewerDetailContent"></div></details></div>';
+ const body='<div class="image-viewer"><div class="image-viewer-stage" id="imageViewerStage"></div><div class="image-viewer-filmstrip" id="imageViewerFilmstrip"></div><div class="image-viewer-meta" id="imageViewerMeta"></div><details class="image-viewer-details" id="imageViewerDetails"><summary>Image notes & details</summary><div id="imageViewerDetailContent"></div></details></div>';
  const applyImageTransform=()=>{
   const image=$('imageViewerImage');if(!image)return;
   image.style.transform='translate3d(calc(-50% + '+panX+'px),calc(-50% + '+panY+'px),0) scale('+viewerZoom+')';
@@ -71,7 +71,7 @@ function showImageViewer(index){
  };
  const updateViewer=(direction=0)=>{
   const current=images[sliderIndex],prev=images[sliderIndex-1],next=images[sliderIndex+1],stage=$('imageViewerStage');if(!stage)return;
-  stage.innerHTML=(prev?'<button type="button" class="image-side-preview previous" data-viewer-prev aria-label="Previous image"><img loading="lazy" decoding="async" src="'+prev.data+'" alt=""><span>‹</span></button>':'<span class="image-side-spacer"></span>')+'<figure class="image-viewer-current"><div class="image-viewer-image-wrap" id="imageViewerImageWrap"><img id="imageViewerImage" class="viewer-image-enter" src="'+current.data+'" alt="'+esc(current.name||'Gallery image')+'" draggable="false"></div><figcaption><b>'+esc(current.name||'Image '+(sliderIndex+1))+'</b><span>'+(sliderIndex+1)+' of '+images.length+'</span></figcaption></figure>'+(next?'<button type="button" class="image-side-preview next" data-viewer-next aria-label="Next image"><img loading="lazy" decoding="async" src="'+next.data+'" alt=""><span>›</span></button>':'<span class="image-side-spacer"></span>');
+  stage.innerHTML='<figure class="image-viewer-current"><div class="image-viewer-image-wrap" id="imageViewerImageWrap"><img id="imageViewerImage" class="viewer-image-enter" src="'+current.data+'" alt="'+esc(current.name||'Gallery image')+'" draggable="false"></div><figcaption><b>'+esc(current.name||'Image '+(sliderIndex+1))+'</b><span>'+(sliderIndex+1)+' of '+images.length+'</span></figcaption></figure>'+(prev?'<button type="button" class="image-viewer-arrow previous" data-viewer-prev aria-label="Previous image">‹</button>':'')+(next?'<button type="button" class="image-viewer-arrow next" data-viewer-next aria-label="Next image">›</button>':'');
   const strip=$('imageViewerFilmstrip');strip.innerHTML=images.map((item,i)=>'<button type="button" data-viewer-index="'+i+'" class="'+(i===sliderIndex?'active':'')+'" aria-label="Show image '+(i+1)+'" aria-current="'+(i===sliderIndex?'true':'false')+'"><img loading="lazy" decoding="async" src="'+item.data+'" alt=""></button>').join('');
   $('imageViewerMeta').innerHTML='<span>Added: '+esc(dateTime(current.addedAt))+'</span><span>Last opened: '+esc(dateTime(current.lastOpenedAt))+'</span><span>'+(current.locked?'🔒 Image locked':'🔓 Image unlocked')+'</span><span class="image-viewer-zoom-label">Zoom: '+Math.round(viewerZoom*100)+'%</span>';
   $('imageViewerDetailContent').innerHTML='<label>Notes<textarea id="galleryImageNotes" rows="3" '+(book.locked||current.locked?'disabled':'')+'>'+esc(current.notes||'')+'</textarea></label><div class="image-individual-history"><b>Image viewing history · Last 10</b>'+(current.history?.length?current.history.slice(-10).reverse().map(entry=>'<span>'+esc(dateTime(entry.openedAt))+'</span>').join(''):'<span class="muted">No previous views</span>')+'</div><div class="row wrap"><button type="button" id="saveGalleryImageNote" '+(book.locked||current.locked?'disabled':'')+'>Save note</button><span class="grow"></span><button type="button" id="copyViewerImage">Copy image</button><button type="button" id="toggleImageLock" '+(book.locked?'disabled':'')+'>'+(current.locked?'Unlock image':'Lock image')+'</button><button type="button" id="deleteViewerImage" class="danger" '+(book.locked||current.locked?'disabled':'')+'>Delete image</button></div>';
@@ -99,7 +99,7 @@ function showImageViewer(index){
   };
   const setViewerIndexAfterDelete=async()=>{const current=images[sliderIndex],now=Date.now();current.lastOpenedAt=now;gallery.lastOpenedAt=now;current.history=(current.history||[]).concat({openedAt:now}).slice(-10);gallery.history=(gallery.history||[]).concat({imageId:current.id,imageName:current.name||'Image',openedAt:now}).slice(-10);await persist(book);renderGallery();updateViewer()};
   if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);
-  viewerKeyHandler=event=>{if(event.key==='ArrowLeft'){event.preventDefault();setViewerIndex(sliderIndex-1,-1)}else if(event.key==='ArrowRight'){event.preventDefault();setViewerIndex(sliderIndex+1,1)}else if(event.key==='Escape'){if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null}};
+  viewerKeyHandler=event=>{if(event.key==='ArrowLeft'){event.preventDefault();setViewerIndex(sliderIndex-1,-1)}else if(event.key==='ArrowRight'){event.preventDefault();setViewerIndex(sliderIndex+1,1)}else if(event.key==='Escape'){if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;closeModal();if(document.fullscreenElement)document.exitFullscreen?.().catch?.(()=>{})}};
   document.addEventListener('keydown',viewerKeyHandler);
   const stage=$('imageViewerStage');
   stage?.addEventListener('wheel',event=>{
@@ -123,7 +123,7 @@ function showImageViewer(index){
   });
   const finishPointer=event=>{if(!dragState)return;const dx=event.clientX-dragState.x,dy=event.clientY-dragState.y,zoomed=dragState.zoom>1,moved=dragState.moved;dragState=null;stage.classList.remove('is-panning');if(!zoomed&&moved&&Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)*1.25)setViewerIndex(sliderIndex+(dx<0?1:-1),dx<0?1:-1)};
   stage?.addEventListener('pointerup',finishPointer);stage?.addEventListener('pointercancel',()=>{dragState=null;stage?.classList.remove('is-panning')});
-  $('modalClose').addEventListener('click',()=>{if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null},{once:true});
+  $('modalClose').addEventListener('click',()=>{if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;if(document.fullscreenElement)document.exitFullscreen?.().catch?.(()=>{})},{once:true});
  });
 }
 function showGalleryHistory(){
