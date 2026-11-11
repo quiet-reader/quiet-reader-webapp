@@ -4,6 +4,7 @@ import {$,esc,toast,modal,closeModal,dataURL,uid} from './utils.js';
 import {refresh,openBook,setBookTab,drawBook} from './library.js';
 
 let sliderIndex=0;
+let viewerKeyHandler=null;
 const imageFiles=files=>[...files].filter(file=>file.type?.startsWith('image/')||/\.(png|jpe?g|gif|webp|avif|svg|bmp)$/i.test(file.name)).sort((a,b)=>new Intl.Collator(undefined,{numeric:true,sensitivity:'base'}).compare(a.webkitRelativePath||a.name,b.webkitRelativePath||b.name));
 const dateTime=value=>Number.isFinite(Number(value))&&Number(value)>0?new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(new Date(Number(value))):'Not opened yet';
 function ensureGallery(book){
@@ -66,7 +67,7 @@ function showImageViewer(index){
  modal('Gallery viewer',body,()=>{
   const modalElement=document.querySelector('#modalHost .modal');modalElement?.classList.add('image-viewer-modal');
   const back=document.querySelector('#modalBack');back?.classList.add('image-viewer-backdrop');
-  const rerender=nextIndex=>{closeModal();showImageViewer(nextIndex)};
+  const rerender=nextIndex=>{if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;closeModal();showImageViewer(nextIndex)};
   $('modalHost').onclick=async event=>{
    if(event.target.closest('[data-viewer-prev]')){if(index>0)rerender(index-1);return}
    if(event.target.closest('[data-viewer-next]')){if(index<images.length-1)rerender(index+1);return}
@@ -76,8 +77,10 @@ function showImageViewer(index){
    if(event.target.closest('#toggleImageLock')){image.locked=!image.locked;await persist(book);rerender(index);toast(image.locked?'Image locked':'Image unlocked');return}
    if(event.target.closest('#deleteViewerImage')){if(image.locked||book.locked)return toast('Unlock this image and gallery before deleting');if(!confirm('Delete this image from the gallery?'))return;gallery.images.splice(index,1);await persist(book);closeModal();renderGallery();toast('Image deleted');return}
   };
-  const keyHandler=event=>{if(event.key==='ArrowLeft'&&index>0)rerender(index-1);if(event.key==='ArrowRight'&&index<images.length-1)rerender(index+1);if(event.key==='Escape'){document.removeEventListener('keydown',keyHandler)}};
-  document.addEventListener('keydown',keyHandler);
+  if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);
+  viewerKeyHandler=event=>{if(event.key==='ArrowLeft'&&index>0){event.preventDefault();document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;rerender(index-1)}else if(event.key==='ArrowRight'&&index<images.length-1){event.preventDefault();document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;rerender(index+1)}else if(event.key==='Escape'){document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null}};
+  document.addEventListener('keydown',viewerKeyHandler);
+  $('modalClose').addEventListener('click',()=>{if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null},{once:true});
  });
 }
 function showGalleryHistory(){
