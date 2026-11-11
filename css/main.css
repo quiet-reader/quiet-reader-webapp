@@ -244,3 +244,22 @@ select:focus{animation:select-focus-in .2s ease both}
 .select-popover-trigger{min-height:37px;border-radius:7px;box-shadow:0 2px 5px #0002;transition:background .15s,border-color .15s,box-shadow .15s,transform .15s}
 .select-popover-trigger:hover{background:var(--panel2);border-color:var(--accent);transform:translateY(-1px)}
 .select-popover-trigger:active{transform:translateY(0) scale(.99)}
+
+/* Consistent animated 3D popup selectors, including dynamically created dialog controls */
+.select-popover-wrap{isolation:isolate}.select-popover-wrap.is-open{z-index:110}
+.select-popover{z-index:120;border-radius:5px!important;background:color-mix(in srgb,var(--panel) 94%,#111)!important;box-shadow:0 22px 44px #000b,0 7px 14px #0007,inset 0 1px #ffffff18!important;border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line))!important;transform-origin:top center;animation:select-3d-in .22s cubic-bezier(.16,.84,.28,1) both!important}
+.select-popover button{border-radius:3px!important;min-height:39px!important;transition:transform .14s ease,background .14s ease,box-shadow .14s ease!important}
+.select-popover button:hover,.select-popover button:focus-visible{transform:translateX(3px)!important;box-shadow:inset 3px 0 var(--accent),0 3px 9px #0004!important}
+.select-popover-wrap.is-open .select-popover-trigger{box-shadow:0 5px 13px #0005,inset 0 1px #ffffff18!important}
+@keyframes select-3d-in{from{opacity:0;transform:perspective(650px) rotateX(-13deg) translateY(-8px) scale(.96)}to{opacity:1;transform:perspective(650px) rotateX(0) translateY(0) scale(1)}}
+.selection-toolbar{z-index:160;box-shadow:0 12px 34px #000b,0 3px 8px #0008;border-radius:7px}.selection-toolbar-label{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+.selection-bookmark-action{width:auto!important;min-width:unset!important;height:28px!important;padding:0 9px!important;border-radius:5px!important;background:linear-gradient(145deg,#f4d77b,#b58b35)!important;color:#282014!important;border:1px solid #fff7!important;font-size:12px!important;font-weight:800}
+.selection-bookmark-action:hover{transform:translateY(-2px) scale(1.04)!important;box-shadow:0 5px 12px #0007!important}
+.saved-mark-item{position:relative;overflow:hidden}.saved-mark-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.saved-mark-meta>b{flex:1 1 150px}
+.saved-mark-type{font-size:11px;font-weight:800;padding:5px 8px;border-radius:4px;background:var(--panel2);border:1px solid var(--line)}
+.saved-mark-type.bookmark{color:#e6c66c;border-color:#b99643;background:#b996431a}.saved-mark-type.highlight{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
+.saved-mark-actions{display:flex;gap:6px;margin-top:9px}.saved-mark-actions button{font-size:12px;padding:5px 10px;border-radius:4px}
+.saved-highlight-color{height:4px;margin:9px 0 4px;border-radius:4px;animation:highlight-color-pulse 2.8s ease-in-out infinite}
+.saved-highlight-color[data-color="yellow"]{background:#e8d47b;box-shadow:0 0 12px #e8d47b88}.saved-highlight-color[data-color="green"]{background:#8bc58b;box-shadow:0 0 12px #8bc58b88}.saved-highlight-color[data-color="blue"]{background:#83b8e8;box-shadow:0 0 12px #83b8e888}.saved-highlight-color[data-color="pink"]{background:#e7a0bd;box-shadow:0 0 12px #e7a0bd88}.saved-highlight-color[data-color="purple"]{background:#b9a0e888;box-shadow:0 0 12px #b9a0e888}
+@keyframes highlight-color-pulse{0%,100%{opacity:.65;filter:saturate(.9)}50%{opacity:1;filter:saturate(1.35) brightness(1.12)}}
+.reading-body mark[data-highlight]{position:relative;z-index:0;isolation:isolate;display:inline!important;padding:0 .08em!important;border-radius:3px!important;box-decoration-break:clone;-webkit-box-decoration-break:clone}
