@@ -1,6 +1,11 @@
 import {state,setScreen,freshBook} from './state.js';import {put} from './db.js';import {$,toast,dataURL,uid} from './utils.js';import {drawBook,refresh} from './library.js';
 export function editChapter(index){if(state.book.locked)return toast('Unlock this book before editing');state.editIndex=index;const c=index==null?{title:'Chapter '+(state.book.chapters.length+1),text:'',images:[]}:state.book.chapters[index];$('editorHeading').textContent=index==null?'Add chapter':'Edit chapter';$('editChapterTitle').value=c.title||'';$('editChapterText').value=c.text||'';$('editorContext').textContent=state.book.title;setScreen('editor')}
-export async function saveChapter(){const c={title:$('editChapterTitle').value.trim(),text:$('editChapterText').value,images:state.editIndex==null?(state.pendingImages||[]):(state.book.chapters[state.editIndex].images||[])};delete state.pendingImages;if(state.editIndex==null)state.book.chapters.push(c);else state.book.chapters[state.editIndex]=c;state.book.updated=Date.now();await put(state.book);await refresh();drawBook();setScreen('book');toast('Chapter saved')}
+export async function saveChapter(){
+ const now=Date.now(),title=$('editChapterTitle').value.trim(),text=$('editChapterText').value,images=state.editIndex==null?(state.pendingImages||[]):(state.book.chapters[state.editIndex].images||[]);delete state.pendingImages;
+ if(state.editIndex==null)state.book.chapters.push({title,text,images,createdAt:now,updatedAt:now,history:[]});
+ else{const previous=state.book.chapters[state.editIndex],history=Array.isArray(previous.history)?previous.history:[];history.push({title:previous.title||'',text:previous.text||'',editedAt:now});state.book.chapters[state.editIndex]={...previous,title,text,images,createdAt:previous.createdAt??previous.addedAt,updatedAt:now,history}}
+ state.book.updated=now;await put(state.book);await refresh();drawBook();setScreen('book');toast('Chapter saved');
+}
 export async function deleteChapter(){if(state.editIndex==null||!confirm('Delete this chapter?'))return;state.book.chapters.splice(state.editIndex,1);await put(state.book);await refresh();drawBook();setScreen('book')}
 export async function insertImage(file){if(!file)return;const data=await dataURL(file),id=uid(),ta=$('editChapterText'),pos=ta.selectionStart;ta.setRangeText('\n[IMAGE:'+id+']\n',pos,ta.selectionEnd,'end');const image={id,data,after:ta.value.slice(0,pos).split(/\n\s*\n/).length};if(state.editIndex==null){state.pendingImages=state.pendingImages||[];state.pendingImages.push(image)}else{state.book.chapters[state.editIndex].images=state.book.chapters[state.editIndex].images||[];state.book.chapters[state.editIndex].images.push(image)}toast('Image inserted at cursor')}
 export async function importTextBook(fileList){
@@ -14,7 +19,7 @@ export async function importTextBook(fileList){
   if(!text)continue;
   const relative=file.webkitRelativePath||file.name;
   const base=relative.split('/').pop().replace(/\.txt$/i,'');
-  imported.push({title:base||'Untitled chapter',text,images:[]});
+  const now=Date.now();imported.push({title:base||'Untitled chapter',text,images:[],createdAt:now,updatedAt:now,history:[]});
  }
  if(!imported.length)return toast('The selected text files are empty');
  const firstPath=files[0].webkitRelativePath||'';
@@ -38,7 +43,7 @@ export async function importTextChapters(fileList){
  for(const file of files){
   const text=(await file.text()).replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').trim();
   if(!text)continue;
-  imported.push({title:file.name.replace(/\.txt$/i,''),text,images:[]});
+  const now=Date.now();imported.push({title:file.name.replace(/\.txt$/i,''),text,images:[],createdAt:now,updatedAt:now,history:[]});
  }
  if(!imported.length)return toast('The selected TXT files are empty');
  state.book.chapters.push(...imported);
