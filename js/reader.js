@@ -356,6 +356,7 @@ async function finishKokoroChapter(){
   await saveProgress();
   if(!autoReadRunning||autoReadPaused)return;
   state.chapter++;
+  void recordReading(state.book,state.chapter,0);
   drawReader();
   window.scrollTo({top:0,behavior:'auto'});
   rebuildKokoroSentenceUnits();
@@ -391,6 +392,7 @@ async function advanceAutoRead(){
   if(state.chapter<state.book.chapters.length-1){
    await saveProgress();
    state.chapter++;
+   void recordReading(state.book,state.chapter,0);
    autoReadIndex=0;autoReadCharOffset=0;kokoroSentenceIndex=0;
    drawReader();
    window.scrollTo({top:0,behavior:'auto'});
