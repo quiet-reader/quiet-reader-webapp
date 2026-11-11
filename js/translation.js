@@ -8,12 +8,12 @@ let translated={bookId:null,chapter:null,text:null};
 
 function sources(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch{return []}}
 function saveSources(list){localStorage.setItem(STORAGE_KEY,JSON.stringify(list))}
-function sourceTypeLabel(type){return ({google:'Google Cloud Translation',deepl:'DeepL',libre:'LibreTranslate / local'})[type]||type}
+function sourceTypeLabel(type){return ({google:'Google Cloud Translation API',googleFree:'Google Translate (free, unofficial)',deepl:'DeepL',libre:'LibreTranslate / local',omni:'OmniTranslate (manual handoff)'})[type]||type}
 function sourceEditor(source=null){
- const current=source||{id:'src-'+Date.now(),type:'google',name:'Google Translate',endpoint:'https://api-free.deepl.com/v2/translate',apiKey:'',defaultTarget:'en'};
+ const current=source||{id:'src-'+Date.now(),type:'googleFree',name:'Google Translate Free',endpoint:'',apiKey:'',defaultTarget:'en'};
  const body='<div class="stack translation-source-form">'+
  '<label>Source name<input id="trSourceName" value="'+esc(current.name)+'" placeholder="My translation source"></label>'+
- '<label>Provider<select id="trSourceType"><option value="google">Google Cloud Translation API</option><option value="deepl">DeepL API</option><option value="libre">LibreTranslate / local server</option></select></label>'+
+ '<label>Provider<select id="trSourceType"><option value="googleFree">Google Translate (free, unofficial)</option><option value="google">Google Cloud Translation API (key required)</option><option value="deepl">DeepL API</option><option value="libre">LibreTranslate / local server</option><option value="omni">OmniTranslate (manual handoff)</option></select></label>'+
  '<label id="trEndpointWrap">API endpoint<input id="trEndpoint" value="'+esc(current.endpoint||'')+'" placeholder="http://localhost:5000"></label>'+
  '<label>API key (if required)<input id="trApiKey" type="password" autocomplete="off" value="'+esc(current.apiKey||'')+'" placeholder="API key"></label>'+
  '<label>Default target language<input id="trTarget" value="'+esc(current.defaultTarget||'en')+'" placeholder="en, zh-CN, ja…"></label>'+
@@ -22,7 +22,7 @@ function sourceEditor(source=null){
  modal(source?'Edit translation source':'Create translation source',body,()=>{
   $('trSourceType').value=current.type;
   const endpoint=$('trEndpointWrap');
-  const update=()=>{const type=$('trSourceType').value;endpoint.classList.toggle('hidden',type==='google');$('trEndpoint').placeholder=type==='deepl'?'https://api-free.deepl.com/v2/translate':'http://localhost:5000';};
+  const update=()=>{const type=$('trSourceType').value;endpoint.classList.toggle('hidden',type==='google'||type==='googleFree'||type==='omni');$('trEndpoint').placeholder=type==='deepl'?'https://api-free.deepl.com/v2/translate':'http://localhost:5000';};
   $('trSourceType').onchange=update;update();
   $('trSaveSource').onclick=()=>{
    const type=$('trSourceType').value,name=$('trSourceName').value.trim();
@@ -71,7 +71,13 @@ export async function copyTranslatedChapter(){
 }
 async function translateWith(source,text,target){
  const count=[...text].length;
- if(source.type==='google'&&count>30000)throw new Error('This chapter exceeds Google’s 30,000-character request limit. No chunks were sent.');
+ if(source.type==='googleFree'){
+  const url='https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl='+encodeURIComponent(target)+'&dt=t&q='+encodeURIComponent(text);
+  const response=await fetch(url,{method:'GET'});if(!response.ok)throw new Error('Google Translate Free request failed (HTTP '+response.status+').');
+  const data=await response.json();const result=Array.isArray(data?.[0])?data[0].map(part=>part?.[0]||'').join(''):'';
+  if(!result)throw new Error('Google Translate Free returned no translation. The request may be too long or blocked. No chunks were sent.');return result;
+ }
+ if(source.type==='google'&&count>30000)throw new Error('This chapter exceeds Google Cloud Translation’s 30,000-character request limit. No chunks were sent.');
  if(source.type==='deepl'&&count>128000)throw new Error('This chapter exceeds DeepL’s 128,000-character request limit. No chunks were sent.');
  let response,data;
  if(source.type==='google'){
@@ -99,13 +105,15 @@ export function openTranslatePage(){
  const list=sources();
  if(!list.length){manageTranslationSources();toast('Create a translation source first');return}
  const options=list.map(s=>'<option value="'+esc(s.id)+'">'+esc(s.name)+' · '+esc(sourceTypeLabel(s.type))+'</option>').join('');
- const body='<div class="stack"><label>Translation source<select id="trChooseSource">'+options+'</select></label><label>Target language code<input id="trTargetLanguage" value="'+esc(list[0].defaultTarget||'en')+'" placeholder="en, zh-CN, ja…"></label><p class="muted tiny">The complete chapter is sent in one request to preserve context. It will not be split into smaller chunks. Image markers are protected and restored after translation. Large chapters may exceed the selected provider’s request limit.</p><div id="trProgress" class="muted tiny" aria-live="polite"></div><div class="row"><button id="trManageSources">Manage sources</button><span class="grow"></span><button id="trStart" class="primary">Translate entire chapter</button></div></div>';
+ const body='<div class="stack"><label>Translation source<select id="trChooseSource">'+options+'</select></label><label>Target language code<input id="trTargetLanguage" value="'+esc(list[0].defaultTarget||'en')+'" placeholder="en, zh-CN, ja…"></label><p id="trProviderNote" class="muted tiny">The complete chapter is sent in one request to preserve context. It will not be split into smaller chunks. Image markers are protected and restored after translation.</p><div id="trProgress" class="muted tiny" aria-live="polite"></div><div class="row"><button id="trManageSources">Manage sources</button><span class="grow"></span><button id="trStart" class="primary">Translate entire chapter</button></div></div>';
  modal('Translate page',body,()=>{
-  $('trChooseSource').onchange=()=>{const s=sources().find(x=>x.id===$('trChooseSource').value);if(s)$('trTargetLanguage').value=s.defaultTarget||'en'};
+  const updateProvider=()=>{const s=sources().find(x=>x.id===$('trChooseSource').value);if(s){$('trTargetLanguage').value=s.defaultTarget||'en';$('trProviderNote').textContent=s.type==='googleFree'?'Free unofficial Google Translate endpoint. One complete-chapter request; very long chapters may be rejected by the public endpoint. No API key, quota or uptime guarantee.':s.type==='omni'?'OmniTranslate has no documented public translation API. This option copies the whole chapter and opens OmniTranslate for manual translation; paste the result back here.': 'The complete chapter is sent in one request. It will not be split into smaller chunks.';$('trStart').textContent=s.type==='omni'?'Copy chapter & open OmniTranslate':'Translate entire chapter'}};
+  $('trChooseSource').onchange=updateProvider;updateProvider();
   $('trManageSources').onclick=()=>manageTranslationSources();
   $('trStart').onclick=async()=>{
    const source=sources().find(s=>s.id===$('trChooseSource').value),target=$('trTargetLanguage').value.trim();
    const original=state.book.chapters[state.chapter]?.text;
+   if(source?.type==='omni'){try{await navigator.clipboard.writeText(original);window.open('https://app.readomni.com/','_blank','noopener');$('trProgress').textContent='Chapter copied. Paste it into OmniTranslate, translate it, then copy the result back into Quiet Reader.'}catch(error){$('trProgress').textContent='Clipboard access failed. Copy the chapter manually, then open OmniTranslate.'}return;}
    if(!source||!target||!original)return toast('Choose a source and target language');
    $('trStart').disabled=true;$('trProgress').textContent='Translating the complete chapter…';
    try{
