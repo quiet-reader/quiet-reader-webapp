@@ -139,7 +139,7 @@ export function renderChapterFormat(mode=chapterFormat){
  if(!hasText){chapterFormat='normal';return}
  if(chapterFormat!=='sections')return;
  sectionParts=splitIntoSections(chapter.text,5000);
- view.innerHTML='<div class="chapter-copy-row"><button type="button" class="copy-entire-chapter" data-copy-chapter>Copy entire chapter</button></div>'+sectionParts.map((part,i)=>'<section class="reading-section"><div class="section-heading-row"><b>Section '+(i+1)+' <span class="muted tiny">· '+part.length.toLocaleString()+' characters</span></b><div class="row"><button type="button" data-copy-section="'+i+'">Copy section</button><button type="button" data-toggle-section="'+i+'">Expand</button></div></div><div class="section-content hidden"><p>'+esc(part).replace(/\n/g,'<br>')+'</p></div></section>').join('');
+ view.innerHTML=sectionParts.map((part,i)=>'<section class="reading-section"><div class="section-heading-row"><b>Section '+(i+1)+' <span class="muted tiny">· '+part.length.toLocaleString()+' characters</span></b><div class="row"><button type="button" data-copy-section="'+i+'">Copy section</button><button type="button" data-toggle-section="'+i+'">Expand</button></div></div><div class="section-content hidden"><p>'+esc(part).replace(/\n/g,'<br>')+'</p></div></section>').join('');
  view.classList.remove('hidden');
 }
 export async function copyChapter(){const text=state.book?.chapters?.[state.chapter]?.text;if(text==null)return toast('Chapter not found');try{await navigator.clipboard.writeText(text);toast('Entire chapter copied')}catch{const ta=document.createElement('textarea');ta.value=text;document.body.append(ta);ta.select();const ok=document.execCommand('copy');ta.remove();toast(ok?'Entire chapter copied':'Could not copy chapter')}}
