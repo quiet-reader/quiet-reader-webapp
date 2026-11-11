@@ -50,9 +50,10 @@ async function copyImage(index){
  const image=state.book?.gallery?.images?.[index];if(!image)return;
  try{
   const response=await fetch(image.data),blob=await response.blob();
-  if(navigator.clipboard?.write&&window.ClipboardItem){await navigator.clipboard.write([new ClipboardItem({[blob.type||'image/png']:blob})]);toast('Image copied')}
-  else{await navigator.clipboard.writeText(image.data);toast('Image data URL copied')}
- }catch(error){toast('Could not copy image in this browser')}
+  if(navigator.clipboard?.write&&window.ClipboardItem){await navigator.clipboard.write([new ClipboardItem({[blob.type||'image/png']:blob})]);toast('Image copied');return}
+ }catch(error){}
+ try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(image.data);toast('Image data URL copied · image clipboard unavailable')}else toast('Image clipboard is unavailable in this browser')}
+ catch(error){toast('Could not copy image in this browser')}
 }
 
 export function renderGallery(){
