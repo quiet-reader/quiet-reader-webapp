@@ -70,6 +70,7 @@ async function buildArchive(selected){
   else if(selected.marks){copy.bookmarks=clone(book.bookmarks||[]);copy.highlights=clone(book.highlights||[])}
   if(selected.novels&&!selected.progress)delete copy.progress;
   else if(selected.progress&&book.progress)copy.progress=clone(book.progress);
+  if(selected.progress&&book.readingHistory)copy.readingHistory=clone(book.readingHistory.slice(-10));
   const path='books/book-'+String(i+1).padStart(6,'0')+'.json';
   await writeJson(archive,records,path,copy,'book');
   bookRefs.push({id:book.id,path});
