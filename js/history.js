@@ -30,6 +30,7 @@ export function showUniversalHistory(books,onOpen){
  const entries=(books||[]).flatMap(book=>(book.readingHistory||[]).map(item=>({...item,bookId:book.id,bookTitle:book.title||'Untitled novel'}))).sort((a,b)=>(b.visitedAt||0)-(a.visitedAt||0));
  const body=entries.length?'<div class="reading-history-list">'+entries.map(item=>'<button type="button" class="reading-history-entry" data-global-history-book="'+esc(item.bookId)+'" data-history-chapter="'+Number(item.chapterIndex)+'"><span class="reading-history-copy"><b>'+esc(item.bookTitle)+'</b><small>'+esc(item.chapterTitle||'Chapter '+(Number(item.chapterIndex)+1))+' · '+esc(dateTime(item.visitedAt))+'</small></span><span class="muted tiny">Open ↗</span></button>').join('')+'</div>':'<div class="empty">Your reading history will appear here as you read.</div>';
  modal('Reading history',body,()=>{
+  document.querySelector('#modalHost .modal')?.classList.add('reading-history-modal');
   $('modalHost').onclick=event=>{
    const row=event.target.closest('[data-global-history-book]');
    if(!row)return;
