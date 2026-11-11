@@ -101,13 +101,17 @@ export async function playKokoroAudio(audio, { rate = 1, onStatus = () => {} } =
   activeSources.add(source);
   onStatus('Speaking · Kokoro WebGPU');
   return new Promise((resolve, reject) => {
+    let progressFrame=0;const reportProgress=()=>{if(!activeSources.has(source))return;onProgress(Math.max(0,audioContext.currentTime-startedAt));progressFrame=requestAnimationFrame(reportProgress)};
+    const startedAt=audioContext.currentTime;progressFrame=requestAnimationFrame(reportProgress);
     activeResolves.add(resolve);
     source.onended = () => {
+      cancelAnimationFrame(progressFrame);
       activeSources.delete(source);
       activeResolves.delete(resolve);
       resolve();
     };
     try { source.start(); } catch (error) {
+      cancelAnimationFrame(progressFrame);
       activeSources.delete(source);
       activeResolves.delete(resolve);
       reject(error);
