@@ -111,7 +111,7 @@ export function openTranslatePage(){
    $('trStart').disabled=true;$('trProgress').textContent='Translating the complete chapter…';
    try{
     const protectedTokens=[];
-    const safeText=original.replace(/\\[IMAGE:[^\\]]+\\]/g,token=>{const marker='QRIMAGEPLACEHOLDER'+protectedTokens.length+'TOKEN';protectedTokens.push([marker,token]);return marker});
+    const safeText=original.replace(/\[IMAGE:[^\]]+\]/g,token=>{const marker='QRIMAGEPLACEHOLDER'+protectedTokens.length+'TOKEN';protectedTokens.push([marker,token]);return marker});
     let result=await translateWith(source,safeText,target);
     for(const [marker,token] of protectedTokens)result=result.replaceAll(marker,token);
     translated={bookId:state.book.id,chapter:state.chapter,text:result};
