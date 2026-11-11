@@ -1,10 +1,10 @@
 import {state,freshBook} from './state.js';
 import {put} from './db.js';
 import {$,esc,toast,modal,closeModal,dataURL,uid} from './utils.js';
-import {refresh,openBook,setBookTab,drawBook} from './library.js';
+import {refresh,openBook,setBookTab,drawBook} from './library.js';import {addEditEvent} from './history.js';
 
 let sliderIndex=0;
-let viewerKeyHandler=null;
+let viewerKeyHandler=null;let selectedImageIds=new Set();
 const imageFiles=files=>[...files].filter(file=>file.type?.startsWith('image/')||/\.(png|jpe?g|gif|webp|avif|svg|bmp)$/i.test(file.name)).sort((a,b)=>new Intl.Collator(undefined,{numeric:true,sensitivity:'base'}).compare(a.webkitRelativePath||a.name,b.webkitRelativePath||b.name));
 const dateTime=value=>Number.isFinite(Number(value))&&Number(value)>0?new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(new Date(Number(value))):'Not opened yet';
 function ensureGallery(book){
@@ -145,35 +145,89 @@ function showGalleryHistory(){
  const body=history.length?'<div class="reading-history-list">'+history.map(item=>'<div class="reading-history-entry"><span class="reading-history-copy"><b>'+esc(item.imageName||'Image')+'</b><small>'+esc(dateTime(item.openedAt))+'</small></span></div>').join('')+'</div>':'<div class="empty">No gallery viewing history yet.</div>';
  modal('Gallery history · Last 10',body);
 }
+
+function formatBytes(value){const bytes=Math.max(0,Number(value)||0);if(bytes<1024)return bytes+' B';const units=['KB','MB','GB'];let size=bytes/1024,index=0;while(size>=1024&&index<units.length-1){size/=1024;index++}return size.toFixed(size>=10?1:2)+' '+units[index]}
+function dataSize(data){if(!data)return 0;const comma=data.indexOf(',');return comma<0?0:Math.max(0,Math.floor((data.length-comma-1)*3/4)-(data.endsWith('==')?2:data.endsWith('=')?1:0))}
+function imageSize(image){return Number(image.size)||dataSize(image.data)}
+function bookStorage(book){
+ const gallery=(book.gallery?.images||[]).reduce((n,image)=>n+imageSize(image),0);
+ const chapterImages=(book.chapters||[]).reduce((n,ch)=>n+(ch.images||[]).reduce((sum,image)=>sum+(Number(image.size)||dataSize(image.data)),0),0);
+ const chapterText=(book.chapters||[]).reduce((n,ch)=>n+new TextEncoder().encode(String(ch.text||'')).length,0);
+ return{gallery,chapterImages,chapterText,total:gallery+chapterImages+chapterText};
+}
+function renameImage(image,name){
+ const old=String(image.name||'image'),dot=old.lastIndexOf('.'),ext=dot>0?old.slice(dot):'';
+ let base=String(name||'').trim().replace(/[\\/:*?"<>|]/g,'_');
+ if(!base)return false;
+ if(ext&&base.toLowerCase().endsWith(ext.toLowerCase()))base=base.slice(0,-ext.length);
+ image.name=base+ext;return true;
+}
+export async function pasteGalleryImages(){
+ const book=state.book;if(!book||book.locked)return toast('Unlock editing first');
+ if(!navigator.clipboard?.read)return toast('Clipboard image access is unavailable in this browser');
+ try{const items=await navigator.clipboard.read();const files=[];for(const item of items){const type=item.types.find(value=>value.startsWith('image/'));if(type){const blob=await item.getType(type);files.push(new File([blob],'pasted-image-'+(files.length+1)+'.'+(type.split('/')[1]||'png'),{type}))}}
+ if(!files.length)return toast('No image found in clipboard');
+ await importGalleryFiles(files);
+ }catch(error){toast('Could not read clipboard image. Check browser clipboard permission.')}
+}
+export async function continueGallery(book=state.book){
+ if(!book||book.source!=='gallery')return;
+ state.book=book;ensureGallery(book);
+ const history=[...(book.gallery.history||[])].reverse();
+ let index=-1;
+ for(const entry of history){index=book.gallery.images.findIndex(image=>image.id===entry.imageId);if(index>=0)break}
+ if(index<0){const image=book.gallery.images.reduce((best,item,i)=>!best||Number(item.lastOpenedAt||0)>Number(book.gallery.images[best.index].lastOpenedAt||0)?{index:i}:best,null);index=image?.index??-1}
+ if(index>=0){await openImage(index);return}
+ openBook(book.id);setBookTab('gallery');renderGallery();
+}
+function bulkRenameImages(book,images){
+ if(book.locked)return toast('Unlock this gallery first');
+ const selected=images.filter(image=>selectedImageIds.has(image.id)&&!image.locked);
+ if(!selected.length)return toast('Select at least one unlocked image');
+ const body='<div class="stack"><p class="muted tiny">The original file extension is preserved for every image. Numbering follows the current gallery order.</p><label>Name prefix<input id="galleryRenamePrefix" value="Image_" placeholder="e.g. Character_"></label><div class="row"><label class="grow">Starting number<input id="galleryRenameStart" type="number" min="0" step="1" value="1"></label><label class="grow">Digits<input id="galleryRenameDigits" type="number" min="1" max="8" value="3"></label></div><div id="galleryRenamePreview" class="rename-preview"></div><div class="row"><span class="grow"></span><button type="button" id="applyGalleryBulkRename" class="primary">Rename '+selected.length+' images</button></div></div>';
+ modal('Bulk rename images',body,()=>{
+  const preview=()=>{const prefix=$('galleryRenamePrefix').value||'Image_',start=Math.max(0,Number($('galleryRenameStart').value)||0),digits=Math.max(1,Math.min(8,Number($('galleryRenameDigits').value)||1));$('galleryRenamePreview').innerHTML=selected.slice(0,8).map((image,i)=>{const dot=image.name.lastIndexOf('.'),ext=dot>0?image.name.slice(dot):'';return '<div class="rename-preview-row"><span>'+esc(image.name)+'</span><span>→</span><b>'+esc(prefix+String(start+i).padStart(digits,'0')+ext)+'</b></div>'}).join('')+(selected.length>8?'<p class="muted tiny">and '+(selected.length-8)+' more…</p>':'')};
+  ['galleryRenamePrefix','galleryRenameStart','galleryRenameDigits'].forEach(id=>$(id).addEventListener('input',preview));preview();
+  $('applyGalleryBulkRename').onclick=async()=>{const prefix=$('galleryRenamePrefix').value.trim()||'Image_',start=Math.max(0,Number($('galleryRenameStart').value)||0),digits=Math.max(1,Math.min(8,Number($('galleryRenameDigits').value)||1));let number=0;for(const image of selected){const dot=image.name.lastIndexOf('.'),ext=dot>0?image.name.slice(dot):'';image.name=prefix+String(start+number++).padStart(digits,'0')+ext}addEditEvent(book,'Images bulk renamed',selected.length+' images');await persist(book);selectedImageIds.clear();closeModal();renderGallery();drawBook();toast(selected.length+' images renamed')};
+ });
+}
 export function renderGallery(){
  const book=state.book,host=$('galleryContent');if(!host||!book)return;
- const gallery=ensureGallery(book),images=gallery.images,view=gallery.view==='slider'?'slider':'grid';
- host.innerHTML='<div class="gallery-overview tiny muted">Gallery added '+esc(dateTime(gallery.createdAt))+' · Last opened '+esc(dateTime(gallery.lastOpenedAt))+'</div><div class="gallery-toolbar"><div class="row wrap"><button type="button" data-gallery-view="grid" class="'+(view==='grid'?'active':'')+'">▦ Grid</button><button type="button" data-gallery-view="slider" class="'+(view==='slider'?'active':'')+'">▣ Slideshow</button><span class="muted tiny">'+images.length+' image'+(images.length===1?'':'s')+'</span><button type="button" data-gallery-history>◷ History</button><span class="grow"></span><button type="button" data-gallery-add '+(book.locked?'disabled':'')+'>＋ Add images</button><button type="button" data-gallery-folder '+(book.locked?'disabled':'')+'>＋ Add folder</button></div></div><div class="gallery-lock-note">'+(book.locked?'🔒 This gallery is locked. Unlock editing to change images or notes.':'Gallery unlocked · individual images can also be locked')+'</div>';
+ const gallery=ensureGallery(book),images=gallery.images,view=['slider','compact'].includes(gallery.view)?gallery.view:'grid';
+ const sizes=bookStorage(book);
+ host.innerHTML='<div class="gallery-overview tiny muted">Gallery added '+esc(dateTime(gallery.createdAt))+' · Last opened '+esc(dateTime(gallery.lastOpenedAt))+'<br>Gallery images '+formatBytes(sizes.gallery)+' · Chapter images '+formatBytes(sizes.chapterImages)+' · Chapter text '+formatBytes(sizes.chapterText)+' · <b>Total '+formatBytes(sizes.total)+'</b></div><div class="gallery-toolbar"><div class="row wrap"><button type="button" data-gallery-view="grid" class="'+(view==='grid'?'active':'')+'">▦ Grid</button><button type="button" data-gallery-view="compact" class="'+(view==='compact'?'active':'')+'">☷ Compact</button><button type="button" data-gallery-view="slider" class="'+(view==='slider'?'active':'')+'">▣ Slideshow</button><span class="muted tiny">'+images.length+' images · '+formatBytes(sizes.gallery)+'</span><button type="button" data-gallery-history>◷ History</button><span class="grow"></span><button type="button" data-gallery-add '+(book.locked?'disabled':'')+'>＋ Add images</button><button type="button" data-gallery-folder '+(book.locked?'disabled':'')+'>＋ Add folder</button><button type="button" data-gallery-paste '+(book.locked?'disabled':'')+'>Paste image</button></div></div><div class="gallery-lock-note">'+(book.locked?'🔒 This gallery is locked. Unlock editing to change images or notes.':'Gallery unlocked · locked images cannot be renamed or reordered')+'</div>';
  host.onclick=async event=>{
-  const viewButton=event.target.closest('[data-gallery-view]');
-  if(viewButton){gallery.view=viewButton.dataset.galleryView;await persist(book);renderGallery();return}
+  const viewButton=event.target.closest('[data-gallery-view]');if(viewButton){gallery.view=viewButton.dataset.galleryView;await persist(book);renderGallery();return}
   if(event.target.closest('[data-gallery-add]')){addGalleryImages();return}
   if(event.target.closest('[data-gallery-folder]')){addGalleryFolder();return}
+  if(event.target.closest('[data-gallery-paste]')){await pasteGalleryImages();return}
   if(event.target.closest('[data-gallery-history]')){showGalleryHistory();return}
+  if(event.target.closest('[data-gallery-select-all]')){const unlocked=images.filter(image=>!image.locked);if(selectedImageIds.size===unlocked.length)selectedImageIds.clear();else unlocked.forEach(image=>selectedImageIds.add(image.id));renderGallery();return}
+  if(event.target.closest('[data-gallery-clear-selection]')){selectedImageIds.clear();renderGallery();return}
+  if(event.target.closest('[data-gallery-bulk-rename]')){bulkRenameImages(book,images);return}
+  const rename=event.target.closest('[data-image-rename]');if(rename){const image=images[Number(rename.dataset.imageRename)];if(!image||book.locked||image.locked)return toast('Unlock this image and gallery before renaming');const value=prompt('Rename image (extension is preserved):',image.name.replace(/\\.[^.]+$/,''));if(value==null)return;if(!renameImage(image,value))return toast('Enter a valid image name');addEditEvent(book,'Image renamed',image.name);await persist(book);renderGallery();drawBook();return}
+  const move=event.target.closest('[data-image-move]');if(move){const index=Number(move.dataset.imageMove),delta=Number(move.dataset.delta),target=index+delta,image=images[index];if(book.locked||!image||image.locked||target<0||target>=images.length||images[target].locked)return toast('Locked images and galleries cannot be reordered');[images[index],images[target]]=[images[target],images[index]];addEditEvent(book,'Image reordered',image.name+' · position '+(target+1));await persist(book);renderGallery();return}
+  const lock=event.target.closest('[data-image-lock]');if(lock){const image=images[Number(lock.dataset.imageLock)];if(!image||book.locked)return toast('Unlock the gallery first');image.locked=!image.locked;addEditEvent(book,image.locked?'Image locked':'Image unlocked',image.name);await persist(book);renderGallery();return}
   const slideTarget=event.target.closest('[data-gallery-slide-index]');if(slideTarget){sliderIndex=Number(slideTarget.dataset.gallerySlideIndex);renderGallery();return}
   const copy=event.target.closest('[data-gallery-copy]');if(copy){await copyImage(images[Number(copy.dataset.galleryCopy)]);return}
-  const card=event.target.closest('[data-gallery-image]');if(card){if(event.target.closest('details,textarea,summary,[data-gallery-copy]'))return;await openImage(Number(card.dataset.galleryImage));return}
+  const card=event.target.closest('[data-gallery-image]');if(card){if(event.target.closest('details,textarea,summary,[data-gallery-copy],button,input'))return;await openImage(Number(card.dataset.galleryImage));return}
   if(event.target.closest('[data-gallery-prev]')){sliderIndex=Math.max(0,sliderIndex-1);renderGallery();return}
   if(event.target.closest('[data-gallery-next]')){sliderIndex=Math.min(images.length-1,sliderIndex+1);renderGallery();return}
  };
- host.onkeydown=async event=>{if(event.key!=='Enter'&&event.key!==' ')return;const card=event.target.closest('[data-gallery-image]');if(!card||event.target.closest('details,textarea,summary'))return;event.preventDefault();await openImage(Number(card.dataset.galleryImage))};
  host.onchange=async event=>{
+  const selection=event.target.closest('[data-image-select]');if(selection){const image=images[Number(selection.dataset.imageSelect)];if(!image||image.locked)return;selection.checked?selectedImageIds.add(image.id):selectedImageIds.delete(image.id);const count=host.querySelector('[data-selected-count]');if(count)count.textContent=selectedImageIds.size+' selected';return}
   const field=event.target.closest('[data-image-note]');if(!field)return;
   const image=images[Number(field.dataset.imageNote)];if(!image||book.locked||image.locked)return;
   image.notes=field.value;await persist(book);toast('Image note saved');
  };
- if(!images.length){host.innerHTML+='<div class="empty">This gallery is empty. Add images or a folder to get started.</div>';return}
+ if(!images.length){host.innerHTML+='<div class="empty">This gallery is empty. Add images or paste one from the clipboard.</div>';return}
  if(view==='grid'){
-  host.innerHTML+='<div class="gallery-grid">'+images.map((image,index)=>'<article class="gallery-card '+(image.locked?'is-locked':'')+'" data-gallery-image="'+index+'" tabindex="0" role="button" aria-label="Open '+esc(image.name||'image')+'"><div class="gallery-card-image"><img loading="lazy" src="'+image.data+'" alt="'+esc(image.name||'Gallery image')+'"><span class="gallery-card-open">View image ↗</span></div><div class="gallery-card-caption"><b>'+esc(image.name||'Image '+(index+1))+'</b><span>'+(image.locked?'🔒':'')+'</span></div><div class="gallery-image-dates"><span>Added '+esc(dateTime(image.addedAt))+'</span><span>Opened '+esc(dateTime(image.lastOpenedAt))+'</span></div><details class="gallery-image-details" data-no-open><summary>Details & notes</summary><textarea data-image-note="'+index+'" rows="2" placeholder="Add a note…" '+(book.locked||image.locked?'disabled':'')+'>'+esc(image.notes||'')+'</textarea><div class="row"><button type="button" class="gallery-copy" data-gallery-copy="'+index+'">Copy image</button><span class="grow"></span><span class="tiny muted">'+(image.locked?'Image locked':'')+'</span></div></details></article>').join('')+'</div>';
+  host.innerHTML+='<div class="gallery-grid">'+images.map((image,index)=>'<article class="gallery-card '+(image.locked?'is-locked':'')+'" data-gallery-image="'+index+'" tabindex="0" role="button" aria-label="Open '+esc(image.name||'image')+'"><div class="gallery-card-image"><img loading="lazy" src="'+image.data+'" alt="'+esc(image.name||'Gallery image')+'"><span class="gallery-card-open">View image ↗</span></div><div class="gallery-card-caption"><b>'+esc(image.name||'Image '+(index+1))+'</b><span>'+(image.locked?'🔒':'')+'</span></div><div class="gallery-image-dates"><span>Added '+esc(dateTime(image.addedAt))+'</span><span>Opened '+esc(dateTime(image.lastOpenedAt))+' · '+formatBytes(imageSize(image))+'</span></div><details class="gallery-image-details" data-no-open><summary>Details & notes</summary><textarea data-image-note="'+index+'" rows="2" placeholder="Add a note…" '+(book.locked||image.locked?'disabled':'')+'>'+esc(image.notes||'')+'</textarea><div class="row"><button type="button" class="gallery-copy" data-gallery-copy="'+index+'">Copy image</button><span class="grow"></span><span class="tiny muted">'+(image.locked?'Image locked':'')+'</span></div></details></article>').join('')+'</div>';
+ }else if(view==='compact'){
+  const unlocked=images.filter(image=>!image.locked),selectedCount=images.filter(image=>selectedImageIds.has(image.id)).length;
+  host.innerHTML+='<div class="gallery-compact-toolbar"><button type="button" data-gallery-select-all '+(book.locked?'disabled':'')+'>'+(selectedCount===unlocked.length&&unlocked.length?'Clear selection':'Select all')+'</button><button type="button" data-gallery-clear-selection '+(selectedCount?'':'disabled')+'>Clear</button><span class="tiny muted" data-selected-count>'+selectedCount+' selected</span><button type="button" data-gallery-bulk-rename '+(book.locked||!selectedCount?'disabled':'')+'>Bulk rename</button></div><div class="gallery-compact-list">'+images.map((image,index)=>'<div class="gallery-compact-row '+(image.locked?'is-locked':'')+'" data-gallery-image="'+index+'"><input type="checkbox" data-image-select="'+index+'" aria-label="Select '+esc(image.name)+'" '+(image.locked||book.locked?'disabled':'')+' '+(selectedImageIds.has(image.id)?'checked':'')+'><img class="gallery-compact-thumb" src="'+image.data+'" alt=""><span class="gallery-compact-name"><b>'+esc(image.name||'Image '+(index+1))+'</b><small>'+formatBytes(imageSize(image))+' · '+(image.locked?'Locked':'Unlocked')+'</small></span><button type="button" data-image-rename="'+index+'" '+(book.locked||image.locked?'disabled':'')+'>Rename</button><button type="button" data-image-lock="'+index+'" '+(book.locked?'disabled':'')+'>'+(image.locked?'Unlock':'Lock')+'</button><button type="button" data-image-move="'+index+'" data-delta="-1" '+(book.locked||image.locked||index===0||images[index-1]?.locked?'disabled':'')+' aria-label="Move up">↑</button><button type="button" data-image-move="'+index+'" data-delta="1" '+(book.locked||image.locked||index===images.length-1||images[index+1]?.locked?'disabled':'')+' aria-label="Move down">↓</button></div>').join('')+'</div>';
  }else{
-  sliderIndex=Math.max(0,Math.min(images.length-1,sliderIndex));
-  const image=images[sliderIndex],prev=images[sliderIndex-1],next=images[sliderIndex+1];
+  sliderIndex=Math.max(0,Math.min(images.length-1,sliderIndex));const image=images[sliderIndex],prev=images[sliderIndex-1],next=images[sliderIndex+1];
   host.innerHTML+='<div class="gallery-stage">'+(prev?'<button type="button" class="gallery-neighbor previous" data-gallery-prev><img src="'+prev.data+'" alt=""><span>‹</span></button>':'<span class="gallery-neighbor-spacer"></span>')+'<button type="button" class="gallery-slide-main" data-gallery-image="'+sliderIndex+'"><img src="'+image.data+'" alt="'+esc(image.name||'Gallery image')+'"><span class="gallery-slide-caption">'+esc(image.name||'Image')+' · '+(sliderIndex+1)+' of '+images.length+'</span></button>'+(next?'<button type="button" class="gallery-neighbor next" data-gallery-next><img src="'+next.data+'" alt=""><span>›</span></button>':'<span class="gallery-neighbor-spacer"></span>')+'</div><div class="gallery-filmstrip">'+images.map((item,i)=>'<button type="button" data-gallery-slide-index="'+i+'" class="'+(i===sliderIndex?'active':'')+'"><img src="'+item.data+'" alt=""><span>'+(i+1)+'</span></button>').join('')+'</div><div class="gallery-slide-position">'+(sliderIndex+1)+' of '+images.length+' images · '+esc(image.name||'')+'</div>';
  }
-
 }
