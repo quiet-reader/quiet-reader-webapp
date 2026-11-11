@@ -53,7 +53,7 @@ async function copyImage(image){
 }
 async function openImage(index){
  const book=state.book,gallery=ensureGallery(book),image=gallery.images[index];if(!image)return;
- const now=Date.now();image.lastOpenedAt=now;
+ const now=Date.now();image.lastOpenedAt=now;gallery.lastOpenedAt=now;
  image.history=(image.history||[]).concat({openedAt:now}).slice(-10);
  gallery.history=gallery.history.concat({imageId:image.id,imageName:image.name||'Image',openedAt:now}).slice(-10);
  sliderIndex=index;await persist(book);renderGallery();showImageViewer(index);
@@ -104,6 +104,7 @@ export function renderGallery(){
   if(event.target.closest('[data-gallery-prev]')){sliderIndex=Math.max(0,sliderIndex-1);renderGallery();return}
   if(event.target.closest('[data-gallery-next]')){sliderIndex=Math.min(images.length-1,sliderIndex+1);renderGallery();return}
  };
+ host.onkeydown=async event=>{if(event.key!=='Enter'&&event.key!==' ')return;const card=event.target.closest('[data-gallery-image]');if(!card||event.target.closest('details,textarea,summary'))return;event.preventDefault();await openImage(Number(card.dataset.galleryImage))};
  host.onchange=async event=>{
   const field=event.target.closest('[data-image-note]');if(!field)return;
   const image=images[Number(field.dataset.imageNote)];if(!image||book.locked||image.locked)return;
