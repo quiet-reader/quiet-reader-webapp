@@ -7,10 +7,19 @@ export function renderImageTranslationOverlay(image,transform={panX:0,panY:0,vie
  const root=$('imageTranslationOverlay'),img=$('imageViewerImage');if(!root||!img)return;
  const items=overlays.get(image?.id)||[];
  const draw=()=>{
-  if(!img.isConnected)return;
-  root.style.left=img.offsetLeft+'px';root.style.top=img.offsetTop+'px';
-  root.style.width=img.clientWidth+'px';root.style.height=img.clientHeight+'px';
-  root.innerHTML=items.map(item=>'<div class="image-translation-label" style="left:'+item.left*100+'%;top:'+item.top*100+'%;width:'+item.width*100+'%;height:'+item.height*100+'%">'+esc(item.text)+'</div>').join('');
+  if(!img.isConnected||!img.naturalWidth||!img.naturalHeight)return;
+  const width=img.clientWidth,height=img.clientHeight;
+  const scale=Math.min(width/img.naturalWidth,height/img.naturalHeight);
+  const renderedWidth=img.naturalWidth*scale,renderedHeight=img.naturalHeight*scale;
+  const offsetX=(width-renderedWidth)/2,offsetY=(height-renderedHeight)/2;
+  root.style.inset='0';
+  root.style.width='100%';root.style.height='100%';
+  root.innerHTML=items.map(item=>{
+   const left=(offsetX+item.left*renderedWidth)/width*100;
+   const top=(offsetY+item.top*renderedHeight)/height*100;
+   const boxWidth=item.width*renderedWidth/width*100,boxHeight=item.height*renderedHeight/height*100;
+   return '<div class="image-translation-label" style="left:'+left+'%;top:'+top+'%;width:'+boxWidth+'%;height:'+boxHeight+'%">'+esc(item.text)+'</div>';
+  }).join('');
   root.style.transform='translate3d('+transform.panX+'px,'+transform.panY+'px,0) scale('+transform.viewerZoom+')';
  };
  if(img.complete)draw();else img.addEventListener('load',draw,{once:true});
@@ -39,10 +48,10 @@ export function openImageTranslation(image){
    const lines=(result.data.lines||[]).filter(line=>line.text?.trim()&&line.confidence>=25);
    if(!lines.length)throw new Error('No readable text detected. Try another language or a clearer image.');
    progress.textContent='Translating '+lines.length+' detected regions to English…';
-   const joined=lines.map(line=>line.text.trim()).join('\\n');
+   const joined=lines.map(line=>line.text.trim()).join('\n');
    const translated=await translateImageText(joined,sourceId);
    const width=result.data.imageSize?.width||result.data.width||1,height=result.data.imageSize?.height||result.data.height||1;
-   let translatedLines=translated.split(/\\r?\\n/).map(line=>line.trim()).filter(Boolean);
+   let translatedLines=translated.split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
    if(translatedLines.length!==lines.length){
     const box={left:Math.min(...lines.map(line=>line.bbox.x0))/width,top:Math.min(...lines.map(line=>line.bbox.y0))/height,width:(Math.max(...lines.map(line=>line.bbox.x1))-Math.min(...lines.map(line=>line.bbox.x0)))/width,height:(Math.max(...lines.map(line=>line.bbox.y1))-Math.min(...lines.map(line=>line.bbox.y0)))/height,text:translated};
     overlays.set(image.id,[box]);
