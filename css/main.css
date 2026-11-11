@@ -677,3 +677,7 @@ select:focus{animation:select-focus-in .2s ease both}
 .image-translation-dialog-panel [data-image-translation-close]{width:34px!important;height:34px!important;font-size:22px!important}
 .image-translation-dialog-panel label{display:flex!important;flex-direction:column!important;gap:6px!important}
 .image-translation-dialog-panel select{width:100%!important}
+
+
+/* Keep translated text compact and translucent so the source image remains visible. */
+.image-translation-result{left:clamp(6px,1.5vw,16px)!important;right:clamp(6px,1.5vw,16px)!important;bottom:clamp(6px,1.5vh,12px)!important;max-height:20%!important;padding:7px 10px!important;border-color:#ffffff38!important;background:rgba(255,255,255,.78)!important;color:#171717!important;font-size:clamp(12px,1.35vw,15px)!important;line-height:1.4!important;box-shadow:0 1px 7px #0002!important;backdrop-filter:blur(2px)}
