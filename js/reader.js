@@ -412,6 +412,7 @@ export async function startAutoRead(){
  updateAutoReadControls();
  scheduleAutoRead();
 }
+export function isAutoReadSpeaking(){return autoReadRunning&&!autoReadPaused&&Boolean($('ttsEnabled')?.checked)}
 export function pauseAutoRead(){
  if(!autoReadRunning)return;
  autoReadPaused=true;
