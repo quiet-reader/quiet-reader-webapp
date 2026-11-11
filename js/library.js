@@ -15,7 +15,7 @@ export function drawLibrary(){
  for(const b of list){
   const card=document.createElement('article');card.className='book-card';
   const pct=Math.round((b.progress?.chapter||0)/Math.max(1,b.chapters.length)*100);
-  const tags=(b.tags||[]).map((t,i)=>'<span class="book-tag" style="--tag-color:'+tagColor(t,i)+'">#'+esc(t)+'</span>').join('');
+  const tags=(b.tags||[]).map(t=>'<span class="book-tag" style="--tag-color:'+tagColor(t,availableTags.indexOf(t))+'">#'+esc(t)+'</span>').join('');
   card.innerHTML='<div class="book-cover">'+(b.cover?'<img src="'+b.cover+'" alt="">':'▤')+'</div><div class="book-info"><div class="book-title">'+esc(b.title)+'</div><div class="tiny muted">'+esc(b.author||'Unknown author')+' · '+b.chapters.length+' chapters '+(b.locked?'· 🔒':'')+'</div>'+(tags?'<div class="book-tags">'+tags+'</div>':'')+'<div class="progress-track"><span style="width:'+pct+'%"></span></div><div class="actions"><button data-open="'+b.id+'">Open</button><button data-continue="'+b.id+'">Continue</button><button data-delete="'+b.id+'" '+(b.locked?'disabled title="Unlock this novel before deleting it"':'')+'>Delete</button></div></div>';
   grid.append(card);
  }
