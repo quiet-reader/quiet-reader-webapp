@@ -1,4 +1,4 @@
-import {state,freshBook,setScreen} from './state.js';import {getAll,put,remove} from './db.js';import {$,esc,toast,modal} from './utils.js';import {openReader} from './reader.js';import {novelHistoryMarkup} from './history.js';
+import {state,freshBook,setScreen} from './state.js';import {getAll,put,remove} from './db.js';import {$,esc,toast,modal} from './utils.js';import {openReader} from './reader.js';import {novelHistoryMarkup,addEditEvent} from './history.js';
 let currentBookTab='chapters';
 let librarySearchQuery='';
 let librarySearchMode='everything';
