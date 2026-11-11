@@ -1,5 +1,6 @@
 import {put} from './db.js';
-import {$,esc,modal} from './utils.js';
+import {state} from './state.js';
+import {$,esc,modal,closeModal} from './utils.js';
 
 const dateTime=value=>Number.isFinite(Number(value))&&Number(value)>0?new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(new Date(Number(value))):'Date unavailable';
 
@@ -16,6 +17,7 @@ export async function recordReading(book,chapterIndex,offset=0){
  }
  book.readingHistory=history.slice(-10);
  await put(book);
+ const bookIndex=state.books?.findIndex(item=>item.id===book.id);if(bookIndex>=0)state.books[bookIndex]=book;
 }
 
 export function novelHistoryMarkup(book){
@@ -32,7 +34,7 @@ export function showUniversalHistory(books,onOpen){
    const row=event.target.closest('[data-global-history-book]');
    if(!row)return;
    const book=(books||[]).find(item=>item.id===row.dataset.globalHistoryBook);
-   if(book&&onOpen)onOpen(book,Number(row.dataset.historyChapter));
+   if(book&&onOpen){closeModal();onOpen(book,Number(row.dataset.historyChapter))}
   };
  });
 }
