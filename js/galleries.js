@@ -61,25 +61,55 @@ async function openImage(index){
 function showImageViewer(index){
  const book=state.book,gallery=ensureGallery(book),images=gallery.images;
  if(!images.length)return;
- index=Math.max(0,Math.min(images.length-1,index));sliderIndex=index;
- const image=images[index],prev=images[index-1],next=images[index+1];
- const body='<div class="image-viewer"><div class="image-viewer-stage">'+(prev?'<button type="button" class="image-side-preview previous" data-viewer-prev aria-label="Previous image"><img src="'+prev.data+'" alt=""><span>‹</span></button>':'<span class="image-side-spacer"></span>')+'<figure class="image-viewer-current"><img src="'+image.data+'" alt="'+esc(image.name||'Gallery image')+'"><figcaption><b>'+esc(image.name||'Image '+(index+1))+'</b><span>'+(index+1)+' of '+images.length+'</span></figcaption></figure>'+(next?'<button type="button" class="image-side-preview next" data-viewer-next aria-label="Next image"><img src="'+next.data+'" alt=""><span>›</span></button>':'<span class="image-side-spacer"></span>')+'</div><div class="image-viewer-filmstrip">'+images.map((item,i)=>'<button type="button" data-viewer-index="'+i+'" class="'+(i===index?'active':'')+'" aria-label="Show image '+(i+1)+'"><img src="'+item.data+'" alt=""></button>').join('')+'</div><div class="image-viewer-meta"><span>Added: '+esc(dateTime(image.addedAt))+'</span><span>Last opened: '+esc(dateTime(image.lastOpenedAt))+'</span><span>'+ (image.locked?'🔒 Image locked':'🔓 Image unlocked')+'</span></div><details class="image-viewer-details" open><summary>Image notes & details</summary><label>Notes<textarea id="galleryImageNotes" rows="3" '+(book.locked||image.locked?'disabled':'')+'>'+esc(image.notes||'')+'</textarea></label><div class="image-individual-history"><b>Image viewing history · Last 10</b>'+(image.history?.length?image.history.slice(-10).reverse().map(entry=>'<span>'+esc(dateTime(entry.openedAt))+'</span>').join(''):'<span class="muted">No previous views</span>')+'</div><div class="row wrap"><button type="button" id="saveGalleryImageNote" '+(book.locked||image.locked?'disabled':'')+'>Save note</button><span class="grow"></span><button type="button" id="copyViewerImage">Copy image</button><button type="button" id="toggleImageLock" '+(book.locked?'disabled':'')+'>'+(image.locked?'Unlock image':'Lock image')+'</button><button type="button" id="deleteViewerImage" class="danger" '+(book.locked||image.locked?'disabled':'')+'>Delete image</button></div></details></div>';
+ sliderIndex=Math.max(0,Math.min(images.length-1,index));
+ const body='<div class="image-viewer"><div class="image-viewer-stage" id="imageViewerStage"></div><div class="image-viewer-filmstrip" id="imageViewerFilmstrip"></div><div class="image-viewer-meta" id="imageViewerMeta"></div><details class="image-viewer-details" open id="imageViewerDetails"><summary>Image notes & details</summary><div id="imageViewerDetailContent"></div></details></div>';
+ const updateViewer=()=>{
+  const current=images[sliderIndex],prev=images[sliderIndex-1],next=images[sliderIndex+1];
+  const stage=$('imageViewerStage');
+  if(!stage)return;
+  stage.innerHTML=(prev?'<button type="button" class="image-side-preview previous" data-viewer-prev aria-label="Previous image"><img src="'+prev.data+'" alt=""><span>‹</span></button>':'<span class="image-side-spacer"></span>')+'<figure class="image-viewer-current"><div class="image-viewer-image-wrap"><img id="imageViewerImage" src="'+current.data+'" alt="'+esc(current.name||'Gallery image')+'"></div><figcaption><b>'+esc(current.name||'Image '+(sliderIndex+1))+'</b><span>'+(sliderIndex+1)+' of '+images.length+'</span></figcaption></figure>'+(next?'<button type="button" class="image-side-preview next" data-viewer-next aria-label="Next image"><img src="'+next.data+'" alt=""><span>›</span></button>':'<span class="image-side-spacer"></span>');
+  $('imageViewerFilmstrip').innerHTML=images.map((item,i)=>'<button type="button" data-viewer-index="'+i+'" class="'+(i===sliderIndex?'active':'')+'" aria-label="Show image '+(i+1)+'" aria-current="'+(i===sliderIndex?'true':'false')+'"><img src="'+item.data+'" alt=""></button>').join('');
+  $('imageViewerMeta').innerHTML='<span>Added: '+esc(dateTime(current.addedAt))+'</span><span>Last opened: '+esc(dateTime(current.lastOpenedAt))+'</span><span>'+(current.locked?'🔒 Image locked':'🔓 Image unlocked')+'</span><span class="image-viewer-zoom-label">Zoom: '+Math.round(viewerZoom*100)+'%</span>';
+  $('imageViewerDetailContent').innerHTML='<label>Notes<textarea id="galleryImageNotes" rows="3" '+(book.locked||current.locked?'disabled':'')+'>'+esc(current.notes||'')+'</textarea></label><div class="image-individual-history"><b>Image viewing history · Last 10</b>'+(current.history?.length?current.history.slice(-10).reverse().map(entry=>'<span>'+esc(dateTime(entry.openedAt))+'</span>').join(''):'<span class="muted">No previous views</span>')+'</div><div class="row wrap"><button type="button" id="saveGalleryImageNote" '+(book.locked||current.locked?'disabled':'')+'>Save note</button><span class="grow"></span><button type="button" id="copyViewerImage">Copy image</button><button type="button" id="toggleImageLock" '+(book.locked?'disabled':'')+'>'+(current.locked?'Unlock image':'Lock image')+'</button><button type="button" id="deleteViewerImage" class="danger" '+(book.locked||current.locked?'disabled':'')+'>Delete image</button></div>';
+  const image=$('imageViewerImage');if(image)image.style.transform='scale('+viewerZoom+')';
+  const strip=$('imageViewerFilmstrip');const active=strip?.querySelector('[data-viewer-index="'+sliderIndex+'"]');active?.scrollIntoView({block:'nearest',inline:'center'});
+ };
+ let viewerZoom=1;
+ const setViewerIndex=async nextIndex=>{
+  const next=Math.max(0,Math.min(images.length-1,nextIndex));if(next===sliderIndex)return;
+  sliderIndex=next;viewerZoom=1;
+  const current=images[sliderIndex],now=Date.now();current.lastOpenedAt=now;gallery.lastOpenedAt=now;
+  current.history=(current.history||[]).concat({openedAt:now}).slice(-10);
+  gallery.history=(gallery.history||[]).concat({imageId:current.id,imageName:current.name||'Image',openedAt:now}).slice(-10);
+  await persist(book);renderGallery();updateViewer();
+ };
  modal('Gallery viewer',body,()=>{
   const modalElement=document.querySelector('#modalHost .modal');modalElement?.classList.add('image-viewer-modal');
   const back=document.querySelector('#modalBack');back?.classList.add('image-viewer-backdrop');
-  const rerender=nextIndex=>{if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;closeModal();showImageViewer(nextIndex)};
-  $('modalHost').onclick=async event=>{
-   if(event.target.closest('[data-viewer-prev]')){if(index>0)rerender(index-1);return}
-   if(event.target.closest('[data-viewer-next]')){if(index<images.length-1)rerender(index+1);return}
-   const thumb=event.target.closest('[data-viewer-index]');if(thumb){rerender(Number(thumb.dataset.viewerIndex));return}
-   if(event.target.closest('#copyViewerImage')){await copyImage(image);return}
-   if(event.target.closest('#saveGalleryImageNote')){image.notes=$('galleryImageNotes').value;await persist(book);toast('Image note saved');return}
-   if(event.target.closest('#toggleImageLock')){image.locked=!image.locked;await persist(book);rerender(index);toast(image.locked?'Image locked':'Image unlocked');return}
-   if(event.target.closest('#deleteViewerImage')){if(image.locked||book.locked)return toast('Unlock this image and gallery before deleting');if(!confirm('Delete this image from the gallery?'))return;gallery.images.splice(index,1);await persist(book);closeModal();renderGallery();toast('Image deleted');return}
+  updateViewer();
+  const host=$('modalHost');
+  host.onclick=async event=>{
+   if(event.target.closest('[data-viewer-prev]')){await setViewerIndex(sliderIndex-1);return}
+   if(event.target.closest('[data-viewer-next]')){await setViewerIndex(sliderIndex+1);return}
+   const thumb=event.target.closest('[data-viewer-index]');if(thumb){await setViewerIndex(Number(thumb.dataset.viewerIndex));return}
+   const current=images[sliderIndex];
+   if(event.target.closest('#copyViewerImage')){await copyImage(current);return}
+   if(event.target.closest('#saveGalleryImageNote')){current.notes=$('galleryImageNotes').value;await persist(book);toast('Image note saved');return}
+   if(event.target.closest('#toggleImageLock')){current.locked=!current.locked;await persist(book);updateViewer();renderGallery();toast(current.locked?'Image locked':'Image unlocked');return}
+   if(event.target.closest('#deleteViewerImage')){if(current.locked||book.locked)return toast('Unlock this image and gallery before deleting');if(!confirm('Delete this image from the gallery?'))return;images.splice(sliderIndex,1);await persist(book);if(!images.length){if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;closeModal();renderGallery();toast('Image deleted');return}sliderIndex=Math.min(sliderIndex,images.length-1);viewerZoom=1;await setViewerIndexAfterDelete();return}
   };
+  const setViewerIndexAfterDelete=async()=>{const current=images[sliderIndex],now=Date.now();current.lastOpenedAt=now;gallery.lastOpenedAt=now;current.history=(current.history||[]).concat({openedAt:now}).slice(-10);gallery.history=(gallery.history||[]).concat({imageId:current.id,imageName:current.name||'Image',openedAt:now}).slice(-10);await persist(book);renderGallery();updateViewer()};
   if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);
-  viewerKeyHandler=event=>{if(event.key==='ArrowLeft'&&index>0){event.preventDefault();document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;rerender(index-1)}else if(event.key==='ArrowRight'&&index<images.length-1){event.preventDefault();document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;rerender(index+1)}else if(event.key==='Escape'){document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null}};
+  viewerKeyHandler=event=>{
+   if(event.key==='ArrowLeft'){event.preventDefault();setViewerIndex(sliderIndex-1)}
+   else if(event.key==='ArrowRight'){event.preventDefault();setViewerIndex(sliderIndex+1)}
+   else if(event.key==='Escape'){if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null}
+  };
   document.addEventListener('keydown',viewerKeyHandler);
+  const stage=$('imageViewerStage');
+  stage?.addEventListener('wheel',event=>{
+   if(!event.ctrlKey&&!event.metaKey){event.preventDefault();viewerZoom=Math.max(1,Math.min(4,viewerZoom+(event.deltaY<0?0.15:-0.15)));const image=$('imageViewerImage');if(image)image.style.transform='scale('+viewerZoom+')';const label=document.querySelector('.image-viewer-zoom-label');if(label)label.textContent='Zoom: '+Math.round(viewerZoom*100)+'%'}
+  },{passive:false});
   $('modalClose').addEventListener('click',()=>{if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null},{once:true});
  });
 }
