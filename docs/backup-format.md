@@ -6,9 +6,9 @@ The application exports a ZIP archive named `quiet-reader-backup.zip`.
 
 - `manifest.json`: archive format/version, counts, checksum algorithm, and the inventory of every payload file.
 - `library.json`: library index, item-to-file references, selected backup sections, and optional appearance preferences.
-- `books/book-NNNNNN.json`: one JSON record per novel, including its recent reading history and optional gallery metadata.
+- `books/book-NNNNNN.json`: one JSON record per novel, including its recent reading history, gallery metadata, image notes, locks, and recent gallery/image viewing history.
 - `pastes/paste-NNNNNN.json`: one JSON record per saved pasted chapter.
-- `assets/NNNNNN.ext`: original binary image assets extracted from covers, chapter images, and gallery images.
+- `assets/NNNNNN.ext`: original binary image assets extracted from covers, chapter images, and gallery images. Gallery image metadata (including notes, locks, added/last-opened timestamps, and bounded history) remains in its owning book record.
 - `checksums.sha256`: SHA-256 digests for the manifest and every payload file.
 
 ## Integrity and restore behavior
