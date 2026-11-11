@@ -345,3 +345,21 @@ select:focus{animation:select-focus-in .2s ease both}
 .chapter-nav #chapterIndex:hover,.chapter-nav #chapterIndex:focus-visible{opacity:1;color:var(--accent);border-color:var(--accent)}
 .chapter-nav #chapterCounter{white-space:nowrap;text-align:center}
 @media(max-width:420px){.library-search-mode select{min-width:100px}.chapter-nav{gap:5px}.chapter-nav #chapterIndex{min-width:72px;padding:0 8px}.chapter-nav-center{gap:5px}}
+
+
+/* Clean up the library search controls and saved-marks modal */
+.library-search-row,
+.library-search-mode,
+.library-search-mode::before,
+.library-search-mode::after{border-top:0!important;border-bottom:0!important;box-shadow:none!important;background:transparent!important}
+.library-search-row::before,
+.library-search-row::after{content:none!important;display:none!important}
+.library-search-mode{position:relative;align-self:stretch}
+.library-search-mode .select-popover-wrap{height:100%;min-width:128px}
+.library-search-mode .select-popover-trigger{height:100%;min-height:44px;padding:8px 11px;border-color:color-mix(in srgb,var(--accent) 48%,var(--line));background:color-mix(in srgb,var(--accent) 9%,var(--panel));color:var(--accent);font-weight:650}
+.library-search-mode .select-popover{display:flex;flex-wrap:wrap;gap:7px;min-width:0;width:max-content;max-width:min(300px,calc(100vw - 24px));padding:9px;background:var(--panel);border-color:color-mix(in srgb,var(--accent) 42%,var(--line))}
+.library-search-mode .select-popover button{display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:0;margin:0;padding:7px 10px;border:1px solid color-mix(in srgb,var(--accent) 38%,var(--line));border-radius:8px;background:color-mix(in srgb,var(--accent) 9%,var(--panel));color:var(--fg);white-space:nowrap}
+.library-search-mode .select-popover button:hover,
+.library-search-mode .select-popover button.active{background:color-mix(in srgb,var(--accent) 22%,var(--panel));border-color:var(--accent);color:var(--accent)}
+.modal #modalClose{display:grid;place-items:center;flex:0 0 36px;width:36px;min-width:36px;height:36px;min-height:36px;padding:0;line-height:1;font-size:21px;border-radius:8px}
+@media(max-width:420px){.library-search-mode .select-popover-wrap{min-width:112px}.library-search-mode .select-popover-trigger{min-height:42px}}
