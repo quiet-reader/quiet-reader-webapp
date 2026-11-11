@@ -62,25 +62,31 @@ function showImageViewer(index){
  const book=state.book,gallery=ensureGallery(book),images=gallery.images;
  if(!images.length)return;
  sliderIndex=Math.max(0,Math.min(images.length-1,index));
- const body='<div class="image-viewer"><div class="image-viewer-stage" id="imageViewerStage"><button type="button" class="image-viewer-arrow" data-viewer-prev aria-label="Previous image">‹</button><figure class="image-viewer-current"><div class="image-viewer-image-wrap" id="imageViewerImageWrap"></div><figcaption><b id="imageViewerName"></b><span id="imageViewerPosition"></span></figcaption></figure><button type="button" class="image-viewer-arrow" data-viewer-next aria-label="Next image">›</button></div><div class="image-viewer-filmstrip" id="imageViewerFilmstrip"></div><div class="image-viewer-meta" id="imageViewerMeta"></div><details class="image-viewer-details" open id="imageViewerDetails"><summary>Image notes & details</summary><div id="imageViewerDetailContent"></div></details></div>';
  let viewerZoom=1,panX=0,panY=0,dragState=null;
- const applyImageTransform=()=>{const image=$('imageViewerImage');if(!image)return;image.style.transform='translate3d('+panX+'px,'+panY+'px,0) scale('+viewerZoom+')';const label=document.querySelector('.image-viewer-zoom-label');if(label)label.textContent='Zoom: '+Math.round(viewerZoom*100)+'%'};
+ const body='<div class="image-viewer"><div class="image-viewer-stage" id="imageViewerStage"></div><div class="image-viewer-filmstrip" id="imageViewerFilmstrip"></div><div class="image-viewer-meta" id="imageViewerMeta"></div><details class="image-viewer-details" open id="imageViewerDetails"><summary>Image notes & details</summary><div id="imageViewerDetailContent"></div></details></div>';
+ const applyImageTransform=()=>{
+  const image=$('imageViewerImage');if(!image)return;
+  image.style.transform='translate3d(calc(-50% + '+panX+'px),calc(-50% + '+panY+'px),0) scale('+viewerZoom+')';
+  const label=document.querySelector('.image-viewer-zoom-label');if(label)label.textContent='Zoom: '+Math.round(viewerZoom*100)+'%';
+ };
  const updateViewer=(direction=0)=>{
-  const current=images[sliderIndex],wrap=$('imageViewerImageWrap');if(!wrap)return;
-  const image=document.createElement('img');image.id='imageViewerImage';image.alt=current.name||'Gallery image';image.src=current.data;image.draggable=false;image.decoding='async';image.className='viewer-image-enter';image.style.setProperty('--viewer-enter-x',direction>0?'12px':direction<0?'-12px':'0px');wrap.replaceChildren(image);
-  $('imageViewerName').textContent=current.name||'Image '+(sliderIndex+1);$('imageViewerPosition').textContent=(sliderIndex+1)+' of '+images.length;
-  $('imageViewerFilmstrip').innerHTML=images.map((item,i)=>'<button type="button" data-viewer-index="'+i+'" class="'+(i===sliderIndex?'active':'')+'" aria-label="Show image '+(i+1)+'" aria-current="'+(i===sliderIndex?'true':'false')+'"><img loading="lazy" decoding="async" src="'+item.data+'" alt=""></button>').join('');
+  const current=images[sliderIndex],prev=images[sliderIndex-1],next=images[sliderIndex+1],stage=$('imageViewerStage');if(!stage)return;
+  stage.innerHTML=(prev?'<button type="button" class="image-side-preview previous" data-viewer-prev aria-label="Previous image"><img loading="lazy" decoding="async" src="'+prev.data+'" alt=""><span>‹</span></button>':'<span class="image-side-spacer"></span>')+'<figure class="image-viewer-current"><div class="image-viewer-image-wrap" id="imageViewerImageWrap"><img id="imageViewerImage" class="viewer-image-enter" src="'+current.data+'" alt="'+esc(current.name||'Gallery image')+'" draggable="false"></div><figcaption><b>'+esc(current.name||'Image '+(sliderIndex+1))+'</b><span>'+(sliderIndex+1)+' of '+images.length+'</span></figcaption></figure>'+(next?'<button type="button" class="image-side-preview next" data-viewer-next aria-label="Next image"><img loading="lazy" decoding="async" src="'+next.data+'" alt=""><span>›</span></button>':'<span class="image-side-spacer"></span>');
+  const strip=$('imageViewerFilmstrip');strip.innerHTML=images.map((item,i)=>'<button type="button" data-viewer-index="'+i+'" class="'+(i===sliderIndex?'active':'')+'" aria-label="Show image '+(i+1)+'" aria-current="'+(i===sliderIndex?'true':'false')+'"><img loading="lazy" decoding="async" src="'+item.data+'" alt=""></button>').join('');
   $('imageViewerMeta').innerHTML='<span>Added: '+esc(dateTime(current.addedAt))+'</span><span>Last opened: '+esc(dateTime(current.lastOpenedAt))+'</span><span>'+(current.locked?'🔒 Image locked':'🔓 Image unlocked')+'</span><span class="image-viewer-zoom-label">Zoom: '+Math.round(viewerZoom*100)+'%</span>';
   $('imageViewerDetailContent').innerHTML='<label>Notes<textarea id="galleryImageNotes" rows="3" '+(book.locked||current.locked?'disabled':'')+'>'+esc(current.notes||'')+'</textarea></label><div class="image-individual-history"><b>Image viewing history · Last 10</b>'+(current.history?.length?current.history.slice(-10).reverse().map(entry=>'<span>'+esc(dateTime(entry.openedAt))+'</span>').join(''):'<span class="muted">No previous views</span>')+'</div><div class="row wrap"><button type="button" id="saveGalleryImageNote" '+(book.locked||current.locked?'disabled':'')+'>Save note</button><span class="grow"></span><button type="button" id="copyViewerImage">Copy image</button><button type="button" id="toggleImageLock" '+(book.locked?'disabled':'')+'>'+(current.locked?'Unlock image':'Lock image')+'</button><button type="button" id="deleteViewerImage" class="danger" '+(book.locked||current.locked?'disabled':'')+'>Delete image</button></div>';
-  applyImageTransform();const active=$('imageViewerFilmstrip')?.querySelector('[data-viewer-index="'+sliderIndex+'"]');active?.scrollIntoView({block:'nearest',inline:'center'});
+  applyImageTransform();strip.querySelector('[data-viewer-index="'+sliderIndex+'"]')?.scrollIntoView({block:'nearest',inline:'center'});
  };
  const setViewerIndex=async(nextIndex,direction=0)=>{
   const next=Math.max(0,Math.min(images.length-1,nextIndex));if(next===sliderIndex)return;
-  sliderIndex=next;viewerZoom=1;panX=0;panY=0;const current=images[sliderIndex],now=Date.now();current.lastOpenedAt=now;gallery.lastOpenedAt=now;current.history=(current.history||[]).concat({openedAt:now}).slice(-10);gallery.history=(gallery.history||[]).concat({imageId:current.id,imageName:current.name||'Image',openedAt:now}).slice(-10);
+  sliderIndex=next;viewerZoom=1;panX=0;panY=0;
+  const current=images[sliderIndex],now=Date.now();current.lastOpenedAt=now;gallery.lastOpenedAt=now;
+  current.history=(current.history||[]).concat({openedAt:now}).slice(-10);gallery.history=(gallery.history||[]).concat({imageId:current.id,imageName:current.name||'Image',openedAt:now}).slice(-10);
   await persist(book);renderGallery();updateViewer(direction);
  };
  modal('Gallery viewer',body,()=>{
-  document.querySelector('#modalHost .modal')?.classList.add('image-viewer-modal');document.querySelector('#modalBack')?.classList.add('image-viewer-backdrop');updateViewer();const host=$('modalHost');
+  document.querySelector('#modalHost .modal')?.classList.add('image-viewer-modal');document.querySelector('#modalBack')?.classList.add('image-viewer-backdrop');updateViewer();
+  const host=$('modalHost');
   host.onclick=async event=>{
    if(event.target.closest('[data-viewer-prev]')){await setViewerIndex(sliderIndex-1,-1);return}
    if(event.target.closest('[data-viewer-next]')){await setViewerIndex(sliderIndex+1,1);return}
@@ -89,20 +95,33 @@ function showImageViewer(index){
    if(event.target.closest('#copyViewerImage')){await copyImage(current);return}
    if(event.target.closest('#saveGalleryImageNote')){current.notes=$('galleryImageNotes').value;await persist(book);toast('Image note saved');return}
    if(event.target.closest('#toggleImageLock')){current.locked=!current.locked;await persist(book);updateViewer();renderGallery();toast(current.locked?'Image locked':'Image unlocked');return}
-   if(event.target.closest('#deleteViewerImage')){if(current.locked||book.locked)return toast('Unlock this image and gallery before deleting');if(!confirm('Delete this image from the gallery?'))return;images.splice(sliderIndex,1);await persist(book);if(!images.length){if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;closeModal();renderGallery();toast('Image deleted');return}sliderIndex=Math.min(sliderIndex,images.length-1);viewerZoom=1;panX=0;panY=0;await setViewerIndexAfterDelete();return}
+   if(event.target.closest('#deleteViewerImage')){if(current.locked||book.locked)return toast('Unlock this image and gallery before deleting');if(!confirm('Delete this image from the gallery?'))return;images.splice(sliderIndex,1);await persist(book);if(!images.length){if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null;closeModal();renderGallery();toast('Image deleted');return}sliderIndex=Math.min(sliderIndex,images.length-1);viewerZoom=1;panX=0;panY=0;await setViewerIndexAfterDelete()}
   };
   const setViewerIndexAfterDelete=async()=>{const current=images[sliderIndex],now=Date.now();current.lastOpenedAt=now;gallery.lastOpenedAt=now;current.history=(current.history||[]).concat({openedAt:now}).slice(-10);gallery.history=(gallery.history||[]).concat({imageId:current.id,imageName:current.name||'Image',openedAt:now}).slice(-10);await persist(book);renderGallery();updateViewer()};
   if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);
   viewerKeyHandler=event=>{if(event.key==='ArrowLeft'){event.preventDefault();setViewerIndex(sliderIndex-1,-1)}else if(event.key==='ArrowRight'){event.preventDefault();setViewerIndex(sliderIndex+1,1)}else if(event.key==='Escape'){if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null}};
-  document.addEventListener('keydown',viewerKeyHandler);const stage=$('imageViewerStage');
+  document.addEventListener('keydown',viewerKeyHandler);
+  const stage=$('imageViewerStage');
   stage?.addEventListener('wheel',event=>{
-   if(event.ctrlKey||event.metaKey)return;event.preventDefault();const wrap=$('imageViewerImageWrap');if(!wrap||!$('imageViewerImage'))return;
-   const rect=wrap.getBoundingClientRect(),px=event.clientX-rect.left,py=event.clientY-rect.top,oldZoom=viewerZoom,nextZoom=Math.max(1,Math.min(4,viewerZoom+(event.deltaY<0?0.2:-0.2)));if(nextZoom===oldZoom)return;
-   const ratio=nextZoom/oldZoom;panX=px-(px-panX)*ratio;panY=py-(py-panY)*ratio;viewerZoom=nextZoom;if(viewerZoom===1){panX=0;panY=0}applyImageTransform();
+   if(event.ctrlKey||event.metaKey)return;event.preventDefault();
+   const wrap=$('imageViewerImageWrap');if(!wrap)return;
+   const rect=wrap.getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
+   const px=event.clientX-cx,py=event.clientY-cy,old=viewerZoom,next=Math.max(1,Math.min(5,viewerZoom*Math.exp(-event.deltaY*0.002)));
+   if(Math.abs(next-old)<0.001)return;
+   const ratio=next/old;panX=px-(px-panX)*ratio;panY=py-(py-panY)*ratio;viewerZoom=next;
+   if(viewerZoom===1){panX=0;panY=0}applyImageTransform();
   },{passive:false});
-  stage?.addEventListener('pointerdown',event=>{if(event.target.closest('button'))return;dragState={x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,moved:false,startZoom:viewerZoom};if(viewerZoom>1){stage.setPointerCapture?.(event.pointerId);stage.classList.add('is-panning')}});
-  stage?.addEventListener('pointermove',event=>{if(!dragState)return;const dx=event.clientX-dragState.lastX,dy=event.clientY-dragState.lastY;if(Math.abs(event.clientX-dragState.x)>5||Math.abs(event.clientY-dragState.y)>5)dragState.moved=true;if(viewerZoom>1&&dragState.startZoom>1){panX+=dx;panY+=dy;dragState.lastX=event.clientX;dragState.lastY=event.clientY;applyImageTransform()}});
-  const finishPointer=event=>{if(!dragState)return;const deltaX=event.clientX-dragState.x,deltaY=event.clientY-dragState.y,wasZoomed=dragState.startZoom>1,moved=dragState.moved;dragState=null;stage?.classList.remove('is-panning');if(!wasZoomed&&moved&&Math.abs(deltaX)>55&&Math.abs(deltaX)>Math.abs(deltaY)*1.25)setViewerIndex(sliderIndex+(deltaX<0?1:-1),deltaX<0?1:-1)};
+  stage?.addEventListener('pointerdown',event=>{
+   if(event.target.closest('button'))return;
+   dragState={x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,moved:false,zoom:viewerZoom};
+   if(viewerZoom>1){stage.setPointerCapture?.(event.pointerId);stage.classList.add('is-panning')}
+  });
+  stage?.addEventListener('pointermove',event=>{
+   if(!dragState)return;
+   if(Math.abs(event.clientX-dragState.x)>5||Math.abs(event.clientY-dragState.y)>5)dragState.moved=true;
+   if(dragState.zoom>1){panX+=event.clientX-dragState.lastX;panY+=event.clientY-dragState.lastY;dragState.lastX=event.clientX;dragState.lastY=event.clientY;applyImageTransform()}
+  });
+  const finishPointer=event=>{if(!dragState)return;const dx=event.clientX-dragState.x,dy=event.clientY-dragState.y,zoomed=dragState.zoom>1,moved=dragState.moved;dragState=null;stage.classList.remove('is-panning');if(!zoomed&&moved&&Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)*1.25)setViewerIndex(sliderIndex+(dx<0?1:-1),dx<0?1:-1)};
   stage?.addEventListener('pointerup',finishPointer);stage?.addEventListener('pointercancel',()=>{dragState=null;stage?.classList.remove('is-panning')});
   $('modalClose').addEventListener('click',()=>{if(viewerKeyHandler)document.removeEventListener('keydown',viewerKeyHandler);viewerKeyHandler=null},{once:true});
  });
