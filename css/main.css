@@ -224,3 +224,10 @@ select:focus{animation:select-focus-in .2s ease both}
 @keyframes select-pop-in{from{opacity:0;transform:translateY(-5px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 .sort-label .select-popover-wrap{min-width:190px}.tag-filter-label .select-popover-wrap{min-width:150px}.novel-stats .select-popover-wrap{min-width:160px}
 @media(max-width:650px){.select-popover-wrap{max-width:100%}.sort-label .select-popover-wrap{flex:1;min-width:0}}
+
+.tag-dropdown-trigger{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;background:var(--panel2);border-color:var(--line);border-radius:8px}
+.tag-dropdown-trigger[aria-expanded="true"]{border-color:var(--accent);color:var(--accent)}
+.tag-dropdown-trigger span{transition:transform .18s}
+.tag-dropdown-trigger[aria-expanded="true"] span{transform:rotate(180deg)}
+.tag-choice-list{border:1px solid var(--line);border-radius:9px;padding:9px;background:color-mix(in srgb,var(--panel) 90%,#000);animation:select-pop-in .16s ease both}
+.rating-option-star{color:var(--accent);font-weight:800}
