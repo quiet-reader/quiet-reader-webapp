@@ -66,7 +66,7 @@ export function restoreOriginalChapter(){
  renderHighlights();updateControls();
 }
 export async function copyTranslatedChapter(){
- if(translated.bookId!==state.book?.id||translated.chapter!==state.chapter||typeof translated.text!=='string')return toast('Translate this chapter first');
+ if(translated.bookId!==state.book?.id||translated.chapter!==state.chapter||translated.originalText!==state.book?.chapters?.[state.chapter]?.text||typeof translated.text!=='string')return toast('Translate this chapter first');
  try{await navigator.clipboard.writeText(translated.text);toast('Translated chapter copied')}catch{const ta=document.createElement('textarea');ta.value=translated.text;document.body.append(ta);ta.select();const ok=document.execCommand('copy');ta.remove();toast(ok?'Translated chapter copied':'Could not copy translated chapter')}
 }
 async function translateWith(source,text,target){
@@ -98,7 +98,6 @@ export function openTranslatePage(){
  if(!state.book?.chapters?.[state.chapter])return toast('No chapter is open');
  const list=sources();
  if(!list.length){manageTranslationSources();toast('Create a translation source first');return}
- const active=translated.bookId===state.book.id&&translated.chapter===state.chapter;
  const options=list.map(s=>'<option value="'+esc(s.id)+'">'+esc(s.name)+' · '+esc(sourceTypeLabel(s.type))+'</option>').join('');
  const body='<div class="stack"><label>Translation source<select id="trChooseSource">'+options+'</select></label><label>Target language code<input id="trTargetLanguage" value="'+esc(list[0].defaultTarget||'en')+'" placeholder="en, zh-CN, ja…"></label><p class="muted tiny">The complete chapter is sent in one request to preserve context. It will not be split into smaller chunks. Image markers are protected and restored after translation. Large chapters may exceed the selected provider’s request limit.</p><div id="trProgress" class="muted tiny" aria-live="polite"></div><div class="row"><button id="trManageSources">Manage sources</button><span class="grow"></span><button id="trStart" class="primary">Translate entire chapter</button></div></div>';
  modal('Translate page',body,()=>{
