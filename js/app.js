@@ -79,4 +79,4 @@ selectionBar.addEventListener('click',e=>{
  }
  if(e.target.closest('[data-highlight-bookmark]'))bookmarkFromSelection()
 });document.addEventListener('pointerdown',e=>{if(!e.target.closest('#selectionToolbar')&&!e.target.closest('#readingBody'))hideSelectionToolbar()});let progressTimer;window.addEventListener('scroll',()=>{if(state.screen==='reader'){clearTimeout(progressTimer);progressTimer=setTimeout(saveProgress,450)}});
-await refresh();enhanceSelects();initTheme();initTTS();setTTSEngine();if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('./service-worker.js').catch(()=>{});setScreen('library');
+await refresh();enhanceSelects();initTheme();initTTS();setTTSEngine();if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('./service-worker.js',{updateViaCache:'none'}).then(registration=>registration.update()).catch(()=>{});setScreen('library');
