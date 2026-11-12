@@ -105,3 +105,15 @@ Append a short entry whenever a feature is added, changed, moved, or removed:
 - Known limitations / not tested:
 
 If a feature is intentionally removed, record the explicit user-approved reason and the migration/backup impact.
+
+
+### V2 architecture work — 12 Nov 2026
+
+- Date and commit: 12 Nov 2026; see V2-feature branch history.
+- Feature/capability: Introduced an infrastructure persistence adapter without changing user-facing features.
+- Owning module / public API: `js/infrastructure/persistence/item-repository.js`; legacy `js/db.js` re-exports the same operations.
+- UI entry points: None changed.
+- Persisted data or backup impact: None intended; same IndexedDB database/store/key path and unchanged record payloads.
+- Compatibility/migration impact: No migration; old imports remain supported through `db.js`.
+- Tests run and outcome: Source-level inspection only; browser runtime and IndexedDB regression tests not run.
+- Known limitations / not tested: Existing modules still use the legacy facade and shared state; further boundary extraction remains.
