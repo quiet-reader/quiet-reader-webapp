@@ -1,7 +1,7 @@
 import {libraryState} from './state/library.js';
-import {put} from './db.js';
+import {itemRepository as itemStore} from './infrastructure/persistence/item-repository.js';
 import {$,esc,toast,modal,closeModal} from './utils.js';
-import {drawBook,refresh} from './library.js';import {addEditEvent} from './history.js';import {can} from './shared/policies.js';
+import {drawBook,refresh} from './features/library/index.js';import {addEditEvent} from './features/history/index.js';import {can} from './shared/policies.js';
 
 export function renameChapters(){
  const book=libraryState.book;
@@ -40,7 +40,7 @@ export function renameChapters(){
    if(!confirm('Rename '+changes.length+' chapter'+(changes.length===1?'':'s')+'?'))return;
    const now=Date.now();
    for(const item of changes){const chapter=book.chapters[item.index];chapter.history=Array.isArray(chapter.history)?chapter.history:[];chapter.history.push({title:chapter.title||'',text:chapter.text||'',editedAt:now,reason:'Renamed'});chapter.title=item.next;chapter.updatedAt=now}
-   book.updated=now;addEditEvent(book,'Chapters renamed',changes.length+' chapter titles');await put(book);await refresh();drawBook();closeModal();toast(changes.length+' chapter'+(changes.length===1?'':'s')+' renamed');
+   book.updated=now;addEditEvent(book,'Chapters renamed',changes.length+' chapter titles');await itemStore.save(book);await refresh();drawBook();closeModal();toast(changes.length+' chapter'+(changes.length===1?'':'s')+' renamed');
   };
   renderChoices();preview();
  });

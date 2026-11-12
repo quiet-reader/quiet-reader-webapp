@@ -1,4 +1,4 @@
-import {getAll,putMany} from './db.js';
+import {itemRepository as itemStore} from './infrastructure/persistence/item-repository.js';
 import {applyTheme} from './themes.js';
 import {$,download,toast,modal,closeModal} from './utils.js';
 
@@ -60,7 +60,7 @@ function checksumText(entries){
 }
 async function buildArchive(selected){
  if(!window.JSZip)throw new Error('The ZIP library did not load. Check your connection and retry.');
- const items=await getAll(),books=items.filter(item=>item.kind==='book'),pastes=items.filter(item=>item.kind==='paste');
+ const items=await itemStore.getAll(),books=items.filter(item=>item.kind==='book'),pastes=items.filter(item=>item.kind==='paste');
  const archive=new JSZip(),records=[],nextAsset={value:1},bookRefs=[],pasteRefs=[];
  for(let i=0;i<books.length;i++){
   const book=books[i];
@@ -199,7 +199,7 @@ export async function importBackup(file){
   else restored=parseLegacyBackup(JSON.parse(await file.text()));
   if(!Array.isArray(restored.items)||restored.items.some(item=>!item||!item.id||!['book','paste'].includes(item.kind)))throw new Error('The backup contains an invalid book or paste record.');
   // Validate the entire archive before writing anything; one IndexedDB transaction commits all records.
-  await putMany(restored.items);
+  await itemStore.saveMany(restored.items);
   applyPreferences(restored);
   toast('Backup restored and verified');
   location.reload();

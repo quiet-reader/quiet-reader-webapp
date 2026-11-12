@@ -115,3 +115,31 @@ Every document must be reviewed. If unchanged, explicitly say "reviewed — no c
 - Documentation reviewed / updated:
 - Known debt / next seam:
 ```
+
+## V3 feature boundary requirements
+
+### Public feature APIs
+- Cross-feature imports must target `js/features/<feature>/index.js`.
+- Keep facade exports explicit and narrow. Do not use `export *` for implementation modules.
+- Add an exported operation only when another feature or the composition root needs it.
+- Keep DOM rendering helpers private unless a real cross-feature consumer requires them.
+
+### State ownership
+- Import the relevant feature-owned slice from `js/state/<feature>.js`.
+- Do not add new imports of aggregate `js/state.js` in feature implementations.
+- Keep persisted user data on domain records; do not duplicate persisted fields into new in-memory stores.
+- Put new-record factories in `js/domain/`; put DOM screen transitions in `js/presentation/`.
+- Retain compatibility exports until all callers are migrated.
+
+### Persistence
+- Use `itemRepository` from `js/infrastructure/persistence/item-repository.js`.
+- Do not add new imports from `db.js`; it exists only for legacy compatibility.
+- Keep the repository generic and lossless. Domain validation and field ownership stay in feature/application code.
+- Use `saveMany` for a batch that must be atomic. Do not implement ad-hoc direct IndexedDB access in a feature.
+- Any change to DB name/version/store/keyPath or record meaning requires a separate compatibility/migration plan.
+
+### Dependency review
+- Inspect the entire facade chain, not only the direct import.
+- Verify the graph has no cycle back to the importing feature.
+- If a feature needs a callback from another feature, prefer explicit registration at the composition root over a reverse import.
+- Update facade exports, ownership, dependency map, and service-worker shell in the same commit when adding a module.

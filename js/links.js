@@ -1,12 +1,12 @@
 import {libraryState} from './state/library.js';import {readerState} from './state/reader.js';
-import {put} from './db.js';
+import {itemRepository as itemStore} from './infrastructure/persistence/item-repository.js';
 import {$,esc,toast,modal} from './utils.js';
-import {openReader} from './reader.js';import {can} from './shared/policies.js';
+import {openReader} from './features/reader/index.js';import {can} from './shared/policies.js';
 
 const books=()=>libraryState.books||[];
 const title=b=>b?.title||'Untitled novel';
 const chapterTitle=(b,i)=>b?.chapters?.[i]?.title||'Chapter '+(i+1);
-const save=async b=>{b.updated=Date.now();await put(b)};
+const save=async b=>{b.updated=Date.now();await itemStore.save(b)};
 async function syncCorrespondingChapters(a,b){
  const count=Math.min(a.chapters?.length||0,b.chapters?.length||0);
  for(const chapter of a.chapters||[])chapter.links=(chapter.links||[]).filter(x=>!(x.autoNovelPair&&x.targetBookId===b.id));

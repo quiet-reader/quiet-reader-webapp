@@ -1,0 +1,2 @@
+// Stable public API for reading, navigation, search, and speech controls.
+export { setHighlightRenderer, chapterHTML, openReader, drawReader, saveProgress, changeChapter, jumpChapter, showMoreNovelSearchResults, searchNovel, openNovelSearchResult, addBookmark, renderChapterFormat, copyChapter, copySection, toggleSection, setAutoReadPosition, startAutoRead, isAutoReadSpeaking, pauseAutoRead, stopAutoRead, setAutoReadSpeed, setTTSSpeechSpeed, setTTSEnabled, setTTSVoice, setTTSEngine, initTTS } from '../../reader.js';

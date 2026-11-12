@@ -1,58 +1,52 @@
 # Architecture status and assessment
 
-**Snapshot:** V3 foundation phase, 12 November 2026  
+**Snapshot:** V3 feature-boundary refinement, 12 November 2026  
 **Branch:** `V3-feature`  
-**Assessment basis:** source inspection and static edits only; no browser runtime testing in this phase.
+**Assessment basis:** repository source inspection and static cross-reference checks. No browser runtime, backup round-trip, or automated tests were run in this phase.
 
-This page is a maturity assessment, not a claim of production certification. Ratings describe the current repository after the V3 change.
+Ratings assess architecture structure and discoverability, not runtime certification. Automated regression testing and separate desktop/mobile shells are intentionally deferred.
 
-| Area | Current state | Assessment | Remaining work |
+| Area | Current state after this phase | Assessment | Remaining work |
 |---|---|---|---|
-| Feature discoverability | Feature ownership register and public entry points documented | Improved substantially | Keep the map synchronized; formalize facades gradually |
-| Dependency visibility | Import adjacency and known cycles documented | Improved substantially | Add automated graph check later; remove cycles incrementally |
-| Feature isolation | Modules are separated by topic but import one another's rendering/state helpers | Partial | Separate application operations from DOM presentation; reduce private cross-feature imports |
-| Shared policy consistency | Book-level capabilities have one pure policy function and several consumers use it | Improved, incomplete | Migrate remaining direct display checks; enumerate every mutation guard |
-| Shared application state | One mutable `state.js` object remains widely imported | Weak / legacy debt | Extract feature-owned state boundaries without changing persisted data |
-| Persistence boundary | IndexedDB repository adapter exists behind `db.js` facade | Early foundation | Migrate feature calls to explicit repository API gradually; add transaction/error contract |
-| Data compatibility | Existing DB and backup formats documented; no schema change in V3 | Strong documentation, runtime verification limited | Build synthetic fixtures and verify unknown-field preservation and restore |
-| Backup/import/export | ZIP + legacy JSON support documented and implemented | Important existing strength | Browser round-trip verification after future persistence changes |
-| Cross-feature contracts | Ownership and shared policy catalogue now exist | Improved | Add narrow public facades and API contracts as seams are extracted |
-| Automated tests | No established automated regression suite identified | Weak | Add lightweight browser/manual smoke checklist or targeted tests when feasible |
-| Desktop/mobile presentation | Same responsive web interface, not separate shells | Partial | Keep feature parity; separate presentation only if a concrete need emerges |
-| Offline/static hosting | Service worker shell cache; new policy module added to shell and cache bumped | Existing approach preserved | Verify install/update on browser after deployment |
-| Documentation maintenance | Mandatory guide, ownership/dependency/policy/data/change/FAQ/status pages | Stronger foundation | Every change must follow the protocol; documentation still requires manual discipline |
-| Accounts/cloud sync | Not implemented; local IndexedDB remains source of truth | Not a current requirement | If added, design sync metadata/conflicts separately without coupling record schema to UI |
+| Feature discoverability | Ownership map plus explicit public facade for each major feature | **Strong** | Keep facade exports and owner map synchronized |
+| Dependency visibility | Current graph documented; direct reader/marks cycle removed | **Strong** | Check full facade chains when adding edges |
+| Feature isolation | Cross-feature callers use feature facades; implementation files remain in legacy locations | **Strong improvement** | Move implementations only when useful; no mass move required |
+| Shared policy consistency | Central book-capability policy with operation and UI guards | **Strong** | Continue auditing new mutation paths |
+| Shared application state | Library, reader, editor, navigation slices; legacy aggregate facade retained for app compatibility | **Strong improvement** | Gradually remove aggregate facade use outside composition root |
+| Persistence boundary | Generic IndexedDB repository contract; feature modules use it; db.js compatibility facade retained | **Strong improvement** | Add domain-specific repositories only when a real use case requires them |
+| Data compatibility | Existing DB/record/backup contract unchanged and documented | **Strong** | Runtime round-trip verification remains outstanding |
+| Cross-feature APIs | Explicit narrow facades for library, reader, chapters, marks, links, galleries, translation, image translation, history, backup, EPUB, PDF | **Strong** | Treat facade exports as the supported cross-feature entry points |
+| Automated regression testing | No established automated suite identified | **Deferred by request** | Not included in this phase |
+| Desktop/mobile separation | Current responsive interface; no separate shells | **Deferred by request** | User intends to address this later |
+| Offline/static hosting | Service worker cache includes new state, domain, presentation and facade modules | **Preserved** | Browser update/cache behaviour not runtime-tested |
+| Documentation maintenance | Ownership, dependency, policies, data, change protocol, FAQ, status, checklist | **Strong foundation** | Manual synchronization still required |
+| Accounts/cloud sync | Not implemented | **Out of scope** | Separate future design |
 
-## What V3 improved
+## What changed in this phase
 
-1. A future contributor can locate the feature owner and understand the current public entry points without first reconstructing the whole repository.
-2. The observed dependency graph and confirmed reader/highlights cycle are visible.
-3. The book editing lock has a shared, pure capability decision function. UI disabling and operation guards can use the same semantics.
-4. The persisted data contract is summarized separately from UI architecture and the backup ZIP format.
-5. The change protocol defines exactly which docs must be reviewed and when they must be updated.
-6. The guide distinguishes current code from intended architecture and records known debt rather than presenting aspirational diagrams as implemented facts.
+1. Split shared in-memory state into library, reader, editor, and navigation slices. The old `state.js` remains a compatibility facade; feature modules now import owned slices directly.
+2. Moved new-book construction into `domain/book.js` and DOM screen transitions into `presentation/navigation.js`.
+3. Added explicit feature API facades under `js/features/*/index.js`; app and cross-feature callers use those entry points.
+4. Removed the direct reader/highlights circular import. The composition root registers the renderer callback with the reader.
+5. Added `itemRepository` with `getAll`, `get`, `save`, `delete`, and `saveMany`; feature modules use it directly. `db.js` remains for compatibility.
+6. Updated the service-worker shell cache and static file list for all new modules.
 
-## What V3 did not solve
+## What this phase deliberately did not do
 
-- It did not remove the reader/highlights cycle.
-- It did not replace shared mutable state.
-- It did not fully separate feature operations from DOM rendering.
-- It did not move every existing cross-feature import behind a public facade.
-- It did not introduce automated tests or prove browser runtime correctness.
-- It did not add separate desktop/mobile apps, accounts, cloud sync, or a new database schema.
+- No persisted schema or IndexedDB version change.
+- No record rewrite, migration, or backup-format change.
+- No automated regression test framework.
+- No desktop/mobile shell split.
+- No broad physical file move or framework rewrite.
+- No live-site deployment or publishing-setting change.
 
-## Recommended next phases
+## Remaining quality caveats
 
-1. **V3.x — capability-policy completion:** audit every book-level mutation and direct lock check; use the central policy consistently without changing exemptions.
-2. **V4 candidate — reader/marks seam:** remove the reader/highlights circular import with a narrow navigation/rendering interface.
-3. **V4.x — feature operation facades:** separate library domain operations from DOM rendering; migrate editor/chapter tools/gallery callers.
-4. **V5 candidate — state ownership:** reduce direct global state mutation by extracting one cohesive feature at a time.
-5. **Later — verification:** add a small repeatable browser smoke-test path and synthetic data fixture before any schema or backup migration.
+- The compatibility state facade and db.js facade are intentional transition seams. New feature code should not add dependencies on them.
+- Feature implementations remain at historical top-level paths; the facades establish API boundaries without a risky mass move.
+- The repository adapter remains a generic item store, not a domain-specific book/chapter repository.
+- Runtime behaviour, offline cache updates, and backup/restore round trips were not exercised in a browser. Architecture ratings do not imply those checks passed.
 
-Do not start the next phase by moving every file. Choose one high-value seam, map callers, preserve compatibility, and update this status after verification.
+## Next recommended work
 
-## V3 follow-up — capability enforcement pass
-
-A static review found gaps after the initial policy introduction: save-time chapter checks, novel-note persistence, reader-to-editor entry, and several gallery image operations. These now call the shared book-level capability function. This improves consistency at the operation boundary, not just in disabled controls.
-
-The capability policy area should now be assessed as **substantially centralized for the audited book-level editing operations, with runtime verification still outstanding**. The remaining direct `locked` reads are used for state display/toggle semantics or for per-image locks, which are intentionally distinct. This is not proof that every possible mutation path has been exhaustively tested.
+The architecture now has explicit boundaries. Future improvements should be driven by concrete feature needs: add narrow use-case functions when repeated orchestration appears, retire compatibility facades only after all consumers migrate, and keep the data contract stable. Do not add abstractions that do not remove real coupling.

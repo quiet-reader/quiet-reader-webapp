@@ -1,8 +1,8 @@
-import {libraryState} from './state/library.js';import {freshBook} from './state.js';
-import {put} from './db.js';
+import {libraryState} from './state/library.js';import {freshBook} from './domain/book.js';
+import {itemRepository as itemStore} from './infrastructure/persistence/item-repository.js';
 import {$,esc,toast,modal,closeModal,dataURL,uid} from './utils.js';
-import {refresh,openBook,setBookTab,drawBook} from './library.js';import {addEditEvent} from './history.js';import {confirmImagePreview} from './image-preview.js';
-import {openImageTranslation,renderImageTranslationOverlay,clearImageTranslationOverlay} from './image-translation.js';import {can} from './shared/policies.js';
+import {refresh,openBook,setBookTab,drawBook} from './features/library/index.js';import {addEditEvent} from './features/history/index.js';import {confirmImagePreview} from './image-preview.js';
+import {openImageTranslation,renderImageTranslationOverlay,clearImageTranslationOverlay} from './features/image-translation/index.js';import {can} from './shared/policies.js';
 
 let sliderIndex=0;
 let viewerKeyHandler=null;let selectedImageIds=new Set();
@@ -15,7 +15,7 @@ function ensureGallery(book){
  for(const image of book.gallery.images){if(!image.id)image.id=uid();if(!image.addedAt)image.addedAt=book.createdAt||book.updated||Date.now();if(!Array.isArray(image.history))image.history=[]}
  return book.gallery;
 }
-async function persist(book){book.updated=Date.now();await put(book);const index=libraryState.books.findIndex(item=>item.id===book.id);if(index>=0)libraryState.books[index]=book}
+async function persist(book){book.updated=Date.now();await itemStore.save(book);const index=libraryState.books.findIndex(item=>item.id===book.id);if(index>=0)libraryState.books[index]=book}
 export function createGallery(){
  let selectedFiles=[];
  const body='<div class="stack"><label>Gallery title<input id="newGalleryTitle" placeholder="Gallery title"></label><label>Author / source (optional)<input id="newGalleryAuthor"></label><label>Tags (comma-separated)<input id="newGalleryTags" placeholder="art, reference, characters"></label><p class="muted tiny">Choose images or a folder. GIFs remain animated. You can also create an empty gallery and add images later.</p><div class="row wrap"><button type="button" id="selectGalleryImages">Choose images</button><button type="button" id="selectGalleryFolder">Choose folder</button><span id="gallerySelectionCount" class="tiny muted">No images selected</span></div><input id="newGalleryImageFiles" type="file" accept="image/*" multiple hidden><input id="newGalleryFolderFiles" type="file" accept="image/*" webkitdirectory directory multiple hidden><button id="createGalleryNow" class="primary">Create gallery</button></div>';
@@ -32,7 +32,7 @@ export function createGallery(){
    book.gallery={images:[],view:'grid',history:[],createdAt:Date.now(),lastOpenedAt:null};
    for(const file of selectedFiles){try{book.gallery.images.push({id:uid(),name:(file.webkitRelativePath||file.name).split('/').pop(),data:await dataURL(file),mime:file.type||'application/octet-stream',size:file.size,addedAt:Date.now(),lastOpenedAt:null,notes:'',locked:false,history:[]})}catch(error){console.warn('Could not import gallery image',file.name,error)}}
    if(book.gallery.images[0])book.cover=book.gallery.images[0].data;
-   addEditEvent(book,'Gallery created',book.gallery.images.length+' images');await put(book);await refresh();closeModal();openBook(book.id);setBookTab('gallery');renderGallery();toast('Gallery created · '+book.gallery.images.length+' images');
+   addEditEvent(book,'Gallery created',book.gallery.images.length+' images');await itemStore.save(book);await refresh();closeModal();openBook(book.id);setBookTab('gallery');renderGallery();toast('Gallery created · '+book.gallery.images.length+' images');
   };
  });
 }

@@ -69,3 +69,19 @@ Any schema change requires:
 7. Updates to this contract, DATA-COMPATIBILITY, backup docs, inventory, and checklist.
 
 No V3 schema migration is introduced.
+
+## V3 persistence API refinement
+
+New feature code imports the generic `itemRepository` contract directly from `js/infrastructure/persistence/item-repository.js`:
+
+| Method | Contract |
+|---|---|
+| `getAll()` | Returns all records from the existing `items` object store |
+| `get(id)` | Returns one record by stable ID, or `null` if absent |
+| `save(record)` | Upserts one record by the existing `id` key path |
+| `delete(id)` | Deletes one record by ID |
+| `saveMany(records)` | Writes a batch in one IndexedDB read-write transaction |
+
+The contract deliberately stays generic. Feature/domain validation belongs above this adapter. `db.js` remains a compatibility facade exposing the old function names; new feature code must not add new imports from it.
+
+The new in-memory state slices and public feature facades do not change the persisted record format. The database remains `quietbook-v2`, version `1`, store `items`, key path `id`. No migration or data normalization is introduced.

@@ -1,7 +1,7 @@
 import { $, esc, toast, modal, closeModal } from './utils.js';
 import { libraryState } from './state/library.js';import { readerState } from './state/reader.js';
-import { chapterHTML } from './reader.js';
-import { renderHighlights } from './highlights.js';
+import { chapterHTML } from './features/reader/index.js';
+import { renderHighlights } from './features/marks/index.js';
 
 const STORAGE_KEY='qrTranslationSources';
 let translated={bookId:null,chapter:null,text:null};

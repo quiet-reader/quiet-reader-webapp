@@ -43,3 +43,33 @@ Use [CHANGE-PROTOCOL.md](CHANGE-PROTOCOL.md) and the checklist. Update the inven
 ## Are tests optional because this is a personal app?
 
 Testing can be proportionate, but a personal app still contains valuable local data. Architecture and data changes deserve smoke tests and backup/restore checks. If tests are intentionally not run, say so and avoid claiming runtime correctness.
+
+## V3 boundary and state questions
+
+### Why are feature implementation files still at the top level?
+
+The public facades under `js/features/` establish supported import boundaries without requiring a risky mass file move. Physical relocation can happen later, feature by feature, if it improves navigation and doesn't create unnecessary churn.
+
+### Where should another feature import a function from?
+
+Import it from the owning `js/features/<feature>/index.js` facade. Avoid importing implementation files such as `library.js` or `reader.js` directly. The facade is the supported cross-feature API.
+
+### Why is there still a state.js file?
+
+It is a compatibility facade for the app composition root and any remaining legacy callers. Runtime data is owned by `state/library.js`, `state/reader.js`, `state/editor.js`, and `state/navigation.js`. New feature implementations should import their specific slice.
+
+### Does the new state structure change saved books?
+
+No. These are in-memory application state slices. The persisted book/chapter records, IndexedDB database, and backup formats are unchanged.
+
+### Why is there both a domain book factory and a library feature?
+
+`domain/book.js` constructs a new book record with the existing default shape. The library feature owns library workflows and presentation. The factory does not normalize or migrate existing records.
+
+### Why is setScreen outside state?
+
+The selected screen value is navigation state. Manipulating DOM visibility, drawers, overlays, and scroll position is presentation behaviour, so it lives in `presentation/navigation.js`.
+
+### Why keep db.js if features use itemRepository?
+
+`db.js` is a compatibility facade for old call sites and external imports. New feature code uses the explicit repository contract. It can be retired only after a repository-wide usage audit and a separate change.

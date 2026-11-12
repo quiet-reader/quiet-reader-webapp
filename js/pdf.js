@@ -1,6 +1,6 @@
-import {freshBook} from './state.js';
-import {put} from './db.js';
-import {refresh,openBook} from './library.js';
+import {freshBook} from './domain/book.js';
+import {itemRepository as itemStore} from './infrastructure/persistence/item-repository.js';
+import {refresh,openBook} from './features/library/index.js';
 import {toast} from './utils.js';
 
 export async function importPDF(file){
@@ -30,7 +30,7 @@ export async function importPDF(file){
   const title=file.name.replace(/\.pdf$/i,'').trim()||'Imported PDF';
   const book=freshBook('pdf',title);
   const now=Date.now();book.chapters=[{title,text:extracted,images:[],createdAt:now,updatedAt:now,history:[]}];
-  await put(book);
+  await itemStore.save(book);
   await refresh();
   openBook(book.id);
   toast('PDF imported as one chapter');

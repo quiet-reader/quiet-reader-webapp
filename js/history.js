@@ -1,4 +1,4 @@
-import {put} from './db.js';
+import {itemRepository as itemStore} from './infrastructure/persistence/item-repository.js';
 import {libraryState} from './state/library.js';
 import {$,esc,modal,closeModal} from './utils.js';
 
@@ -50,7 +50,7 @@ export async function recordReading(book,chapterIndex,offset=0){
   history.push(event);
   appendUniversalHistory({...event,kind:'reading',bookId:book.id,bookTitle:book.title||'Untitled novel'});
  }
- book.readingHistory=history.slice(-10);await put(book);
+ book.readingHistory=history.slice(-10);await itemStore.save(book);
  const bookIndex=libraryState.books?.findIndex(item=>item.id===book.id);if(bookIndex>=0)libraryState.books[bookIndex]=book;
 }
 export function novelHistoryMarkup(book){

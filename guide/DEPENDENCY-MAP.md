@@ -1,91 +1,71 @@
 # Dependency map
 
-This page records the **observed source-module imports on V3's baseline**. It is a navigation aid for change impact analysis. It is not a claim that the graph is already clean or mechanically enforced.
+**Current snapshot:** V3 feature-boundary and state/persistence refactor, 12 November 2026. This is the current import graph after the V3 feature-boundary refactor; it replaces the original V3 baseline.
 
-## Runtime entry and direction
+## Runtime composition
 
 ```text
 index.html
-  └─ js/app.js  (composition root)
-       ├─ feature modules
-       ├─ shared state / utilities / policies
-       └─ persistence facade (js/db.js)
-              └─ infrastructure/persistence/item-repository.js
+  └─ app.js (composition root)
+       ├─ features/*/index.js (public feature facades)
+       │    └─ feature implementation modules
+       ├─ presentation/navigation.js
+       ├─ shared/policies.js
+       ├─ state.js (compatibility facade only)
+       └─ infrastructure/persistence/item-repository.js
 ```
 
-Preferred direction for new code:
+## Current implementation dependency table
 
-```text
-app / presentation
-       ↓
-feature operations
-       ↓
-shared domain contracts and policies
-       ↓
-infrastructure adapters
-```
-
-Features may call another feature's documented public operation when the workflow genuinely spans domains. Avoid importing its private rendering helpers or depending on its internal module state.
-
-## Observed import adjacency list
-
-| Module | Imports |
+| Implementation / layer | Direct dependencies |
 |---|---|
-| `app.js` | utils, state, library, editor, reader, highlights, themes, backup, EPUB, PDF, db, links, translation, chapter-tools, history, galleries, image-preview, shared policies |
-| `library.js` | state, db, utils, reader, history, shared policies |
-| `editor.js` | state, db, utils, library, history, image-preview, shared policies |
-| `chapter-tools.js` | state, db, utils, library, history, shared policies |
-| `reader.js` | state, db, utils, highlights, history, Kokoro |
-| `highlights.js` | state, db, utils, reader |
-| `history.js` | db, state, utils |
-| `links.js` | state, db, utils, reader, shared policies |
-| `galleries.js` | state, db, utils, library, history, image-preview, image-translation, shared policies |
-| `translation.js` | utils, state, reader, highlights |
-| `image-translation.js` | utils, translation |
-| `backup.js` | db, themes, utils |
-| `epub.js` | state, db, library, utils |
-| `pdf.js` | state, db, library, utils |
-| `library-counts.js` | db |
-| `themes.js` | utils |
-| `state.js` | utils |
-| `db.js` | infrastructure/persistence/item-repository |
-| `infrastructure/persistence/item-repository.js` | browser IndexedDB APIs; no feature imports |
-| `shared/policies.js` | no imports; pure book-capability decisions |
-| `utils.js` | browser/DOM primitives; no feature imports |
-| `kokoro.js` / worker | reader-facing TTS adapter and worker/runtime dependencies |
+| `app.js` | feature facades (including backup/EPUB/PDF), shared policies, state compatibility facade, presentation navigation, item repository, utilities, themes, image preview |
+| `library.js` | library/reader/navigation state slices, domain book factory, presentation navigation, item repository, utilities, reader facade, history facade, shared policies |
+| `reader.js` | library/reader state slices, presentation navigation, item repository, utilities, history facade, Kokoro TTS |
+| `editor.js` | library/editor state slices, presentation navigation, domain book factory, item repository, utilities, library facade, history facade, image preview, shared policies |
+| `chapter-tools.js` | library state, item repository, utilities, library facade, history facade, shared policies |
+| `highlights.js` | library/reader state slices, item repository, utilities, reader facade |
+| `history.js` | library state, item repository, utilities |
+| `links.js` | library/reader state slices, item repository, utilities, reader facade, shared policies |
+| `galleries.js` | library state, domain book factory, item repository, utilities, library/history/image-translation facades, image preview, shared policies |
+| `translation.js` | library/reader state slices, utilities, reader and marks facades |
+| `image-translation.js` | utilities, translation facade |
+| `backup.js` | item repository, themes, utilities |
+| `epub.js` | library state, domain book factory, item repository, library facade, utilities |
+| `pdf.js` | domain book factory, item repository, library facade, utilities |
+| `library-counts.js` | item repository |
+| `features/*/index.js` | only the implementation modules owned by that facade |
+| `state.js` | state slices; re-exports book factory and presentation navigation for compatibility |
+| `state/*.js` | no feature imports; plain feature-owned in-memory state |
+| `domain/book.js` | UID utility; no feature imports |
+| `presentation/navigation.js` | navigation state slice; DOM APIs |
+| `shared/policies.js` | no imports; pure capability decisions |
+| `infrastructure/persistence/item-repository.js` | browser IndexedDB APIs only |
+| `db.js` | compatibility re-export of persistence contract |
 
-## Known cycles and high-coupling edges
+## Public facade rules
 
-### Confirmed circular import
+- The composition root imports feature operations from `js/features/*/index.js`.
+- Cross-feature implementation imports target a facade, never another feature's private implementation file.
+- A facade exports the feature's supported operations, not its entire implementation module.
+- A feature must not import `app.js` or call back into the composition root.
+- State is imported from the owning slice. The aggregate `state.js` facade is transitional.
+- Persistence is imported through the `itemRepository` contract. The old `db.js` named functions are compatibility-only.
 
-- `reader.js → highlights.js → reader.js`: reader imports highlight rendering; highlights imports reader navigation. This is a real ES-module cycle and should be removed only through a small interface extraction (for example, a callback or reader navigation port), with the initialization order checked.
+## Cycle status
 
-### High-coupling feature edges
+The former `reader.js → highlights.js → reader.js` cycle is removed:
+- reader owns the point at which highlight rendering occurs;
+- app registers the marks renderer through `setHighlightRenderer`;
+- marks uses the reader facade for navigation.
 
-- `library.js → reader.js`: opening/continuing a book invokes reader operations.
-- `editor.js → library.js` and `chapter-tools.js → library.js`: features call library redraw/refresh functions, coupling domain operations to presentation.
-- `galleries.js → library.js`: gallery actions refresh or redraw library presentation.
-- `translation.js → reader.js` and `highlights.js`: translation presentation uses reader markup/highlight rendering.
-- `links.js → reader.js`: linked navigation opens the reader.
-- `image-translation.js → translation.js`: overlay delegates provider execution.
+No direct feature implementation cycle is intended in the current facade graph. When adding a new cross-feature edge, inspect the full facade chain, not only the implementation import line.
 
-These are not automatically bugs. They are change-impact edges. New code should prefer a narrow operation interface or injected callback over adding more private imports.
+## Change-impact workflow
 
-## Dependency rules for new changes
-
-- Infrastructure must not import features, app, or UI.
-- Shared policy modules must not import DOM, app state, persistence, or features.
-- Feature modules must not import `app.js`.
-- `app.js` may import feature APIs; features should not call back into the composition root.
-- Avoid new cycles. If a cycle is unavoidable temporarily, record it with the reason and removal condition.
-- Cross-feature imports must target a documented public operation; do not import private DOM renderers just to refresh a screen.
-- Keep worker code independent of DOM and feature UI.
-- When an import changes, update this page and the ownership map in the same commit.
-
-## How to inspect impact before editing
-
-1. Identify the owning module from [FEATURE-OWNERSHIP.md](FEATURE-OWNERSHIP.md).
-2. Search direct imports of that module and all imports made by it.
-3. Trace the affected record fields and shared policies.
-4. Check for cycles before adding a new edge.
-5. Update the map from actual imports, not memory or intended architecture.
+1. Find the owner in [FEATURE-OWNERSHIP.md](FEATURE-OWNERSHIP.md).
+2. Start from its public facade and identify implementation modules.
+3. Inspect all facade consumers and the implementation's imports.
+4. Trace the state slices and persisted record fields touched.
+5. Confirm the dependency does not point back through another facade.
+6. Update this map in the same commit.

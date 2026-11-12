@@ -27,7 +27,7 @@ This inventory was checked against the branch's root README, `index.html`, `js/`
 |---|---|
 | `app.js` | Bootstrap and central UI wiring; imports most modules and attaches many event handlers, modals, screen changes and feature actions. Current central orchestration hotspot. |
 | `state.js` | Shared in-memory application state and fresh book creation. |
-| `db.js` | Backward-compatible facade re-exporting the persistence adapter API for existing feature modules. |\n| `infrastructure/persistence/item-repository.js` | New V2 infrastructure adapter for the existing IndexedDB database/store; preserves current record payloads and API operations. |
+| `db.js` | Backward-compatible facade re-exporting legacy persistence names; new feature modules use `itemRepository`. |\n| `infrastructure/persistence/item-repository.js` | New V2 infrastructure adapter for the existing IndexedDB database/store; preserves current record payloads and API operations. |
 | `utils.js` | DOM helpers, escaping, toast/modal, IDs, data URL and download helpers. |
 | `library.js` | Library refresh/render, book detail, book creation/opening, library search/filter/sort, notes and navigation. |
 | `library-counts.js` | Separate library count/summary UI enhancement. |
@@ -159,3 +159,31 @@ The detailed ownership and API index is [FEATURE-OWNERSHIP.md](FEATURE-OWNERSHIP
 ## V3 capability enforcement follow-up — 12 Nov 2026
 
 A follow-up pass added operation-boundary checks to chapter saving and paste-image entry, note saving, reader-to-editor navigation, and gallery book-level image operations. Gallery image locks remain a separate per-image rule. The book lock is still stored only as `book.locked`; no new permission data is persisted. This is the same V3 architecture phase, not a new feature branch or data migration.
+
+## V3 feature-boundary and state/persistence refinement — 12 Nov 2026
+
+### Runtime architecture changes
+
+- Added feature-owned state slices: `state/library.js`, `state/reader.js`, `state/editor.js`, and `state/navigation.js`.
+- Retained `state.js` as a compatibility facade; the app composition root can use it, feature modules import their own slices.
+- Added `domain/book.js` as the new-book record factory.
+- Added `presentation/navigation.js` for DOM screen transitions.
+- Added explicit feature facades under `js/features/` for library, reader, chapters, marks, links, galleries, translation, image translation, history, backup, EPUB, and PDF.
+- Migrated application and cross-feature imports to those facades.
+- Removed the direct reader/highlights circular import; reader highlight rendering is registered by the composition root.
+- Added `itemRepository` contract with `getAll`, `get`, `save`, `delete`, and `saveMany`; feature modules use the repository directly.
+- Retained `db.js` as a compatibility facade.
+- Updated the service-worker shell list and cache version to v51.
+
+### Behaviour and data impact
+
+- No intended user-visible behaviour change.
+- No persisted schema, database version, store, key path, record shape, or backup format change.
+- Existing records are not passed through the new-book factory.
+- All new modules are included in the static shell cache.
+
+### Verification and limitations
+
+- Static source review of state ownership, facade exports, import direction, repository call sites, and service-worker entries.
+- No browser/runtime, automated, IndexedDB CRUD, backup/restore round-trip, accessibility, or offline update test was run.
+- The compatibility state and persistence facades remain intentionally available.

@@ -64,3 +64,16 @@ The V3 shared policy module is `js/shared/policies.js`. It is intentionally smal
 ## Documentation update rule
 
 Every code change must update the change record in `FEATURE-INVENTORY.md` and the completion record in `FEATURE-CHECKLIST.md`. Update ownership, dependency, policy, data-contract, FAQ, and architecture-status pages whenever the change affects their subject. Do not make irrelevant edits merely to create activity; explicitly mark a document as reviewed/no change in the change record when a change is architecture-wide.
+
+## V3 feature-boundary implementation
+
+The current preferred module paths are documented in [FEATURE-OWNERSHIP.md](FEATURE-OWNERSHIP.md) and [DEPENDENCY-MAP.md](DEPENDENCY-MAP.md).
+
+- Feature consumers import through `js/features/<feature>/index.js` facades.
+- Feature implementation modules import their owned state slices from `js/state/`.
+- New-book construction belongs to `js/domain/book.js`.
+- DOM screen transitions belong to `js/presentation/navigation.js`.
+- Persistence uses `itemRepository` from `js/infrastructure/persistence/item-repository.js`.
+- `js/state.js` and `js/db.js` are compatibility facades. Do not add new feature dependencies on them.
+
+The compatibility facades are not to be removed until all remaining legacy callers have been migrated and the change has been verified.

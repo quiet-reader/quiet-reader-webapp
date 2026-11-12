@@ -1,4 +1,4 @@
-import {getAll} from './db.js';
+import {itemRepository as itemStore} from './infrastructure/persistence/item-repository.js';
 
 const filterNames={all:'All',epub:'EPUBs',manual:'My novels',pdf:'PDFs',gallery:'Galleries'};
 let updateSequence=0;
@@ -12,7 +12,7 @@ function matchesSearch(book,query,mode){
 async function updateCounts(){
  const sequence=++updateSequence;
  try{
-  const items=await getAll(),books=items.filter(item=>item.kind==='book');
+  const items=await itemStore.getAll(),books=items.filter(item=>item.kind==='book');
   const query=String(document.getElementById('librarySearch')?.value||'').trim().toLocaleLowerCase();
   const mode=document.getElementById('librarySearchMode')?.value||'everything';
   const tag=document.getElementById('tagFilter')?.value||'all';

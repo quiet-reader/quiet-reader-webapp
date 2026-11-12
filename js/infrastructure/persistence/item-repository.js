@@ -87,3 +87,22 @@ export async function getAll() {
     request.onerror = () => reject(request.error);
   });
 }
+
+// Explicit repository contract for new feature/application code.
+// The legacy named functions above remain available through db.js.
+export async function getItem(id) {
+  const database = await openItemDatabase();
+  return new Promise((resolve, reject) => {
+    const request = database.transaction(STORE_NAME).objectStore(STORE_NAME).get(id);
+    request.onsuccess = () => resolve(request.result ?? null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export const itemRepository = Object.freeze({
+  getAll,
+  get: getItem,
+  save: put,
+  delete: remove,
+  saveMany: putMany
+});

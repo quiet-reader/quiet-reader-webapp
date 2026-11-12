@@ -220,3 +220,48 @@ Avoid a large file move solely for appearance. A boundary is improved when owner
 - Added explicit feature ownership, dependency, policy, data-contract, change-protocol, FAQ, and architecture-status references.
 - No persisted record schema, IndexedDB database name/version/store, backup format, or service-worker hosting mode is intentionally changed.
 - Existing cross-feature imports, shared mutable state, and the reader/highlights cycle remain documented follow-up work.
+
+## V3 architecture refinement — feature boundaries, state, and persistence
+
+### Feature implementation vs public API
+
+Feature implementation modules remain at their historical paths for now, but other features and the composition root now import through explicit facades under `js/features/<feature>/index.js`. A facade exports only the supported operations for that feature. New cross-feature imports must target these facades, not implementation files.
+
+Current facades:
+- `features/library`, `features/reader`, `features/chapters`, `features/marks`
+- `features/links`, `features/galleries`, `features/translation`, `features/image-translation`, `features/history`
+- `features/backup`, `features/epub`, `features/pdf`
+
+This is an incremental boundary: the implementation files have not all been physically moved. Do not move them just to match the facade directory structure.
+
+### Feature-owned state slices
+
+Runtime state is split into:
+- `state/library.js`: books, pastes, active book, library filters.
+- `state/reader.js`: active chapter index.
+- `state/editor.js`: editor index and unsaved pending images.
+- `state/navigation.js`: current screen.
+
+Feature implementation modules import the state slice they own/use. `state.js` is retained as a compatibility facade for the composition root and legacy callers. New feature code must not import the aggregate facade; import a slice directly. Persisted book progress and annotations remain in the existing book record; these in-memory slices do not create a new storage schema.
+
+### Domain factory and presentation navigation
+
+- `domain/book.js` owns construction of new book records. It does not normalize existing records.
+- `presentation/navigation.js` owns the current DOM screen transition. Screen presentation is not domain state.
+- `state/navigation.js` stores only the selected screen.
+
+### Persistence contract
+
+New feature code uses `itemRepository` from `infrastructure/persistence/item-repository.js` with `getAll`, `get`, `save`, `delete`, and `saveMany`. `db.js` remains a compatibility facade for older callers. The repository remains a generic record store: it does not interpret books, chapters, links, or gallery fields.
+
+### Reader/marks dependency
+
+The reader no longer imports the highlights implementation. The composition root registers the marks renderer with `setHighlightRenderer`. The marks feature may call reader public operations through the reader facade. This removes the previous direct reader/highlights ES-module cycle while keeping the render timing in the reader's draw flow.
+
+### Boundary rules now enforced by convention
+
+- `app.js` imports feature facades and composes workflows.
+- Feature implementations import other features only through their public facades.
+- Feature implementations import their owned state slices, not the aggregate `state.js`.
+- Feature persistence calls go through `itemRepository`.
+- `db.js` and `state.js` are compatibility facades, not preferred dependencies for new feature code.

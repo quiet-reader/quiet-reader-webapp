@@ -170,3 +170,20 @@ If a document is reviewed and does not need editing, state "reviewed — no chan
 - Not run: browser interactions, accessibility, IndexedDB, backup/restore, offline update, full regression.
 - Reviewed / no change: ownership map and dependency map (imports unchanged); data contract (no persisted schema change); FAQ (no changed architectural guidance).
 - Known limitation: some lock-state labels and purely presentational state indicators still read the existing boolean directly; they do not decide authorization. The lock/unlock toggle itself necessarily writes that boolean.
+
+## V3 feature-boundary refinement completion record — 12 Nov 2026
+
+- Request: materially improve feature isolation, shared state ownership, persistence boundaries, and cross-feature APIs.
+- Target: `V3-feature`; no stable branch or publishing settings changed.
+- Feature ownership: explicit facades created for library, reader, chapters, marks, links, galleries, translation, image translation, and history.
+- Dependency change: reader no longer imports highlights; composition root registers the renderer. Cross-feature imports route through facades.
+- State ownership: library, reader, editor, and navigation slices added. Feature implementations migrated to the relevant slices. Aggregate `state.js` retained as compatibility facade.
+- Domain/presentation: new-book constructor moved to `domain/book.js`; DOM screen transitions moved to `presentation/navigation.js`.
+- Persistence: `itemRepository` contract added and feature modules migrated; `db.js` retained as compatibility facade.
+- Data: no stored schema, database version, record shape, or backup format change.
+- Offline: service-worker cache bumped to v51 and new modules added to the shell.
+- Tests actually run: static source inspection and GitHub source/tree checks only.
+- Tests not run: browser runtime, manual interaction smoke tests, automated regression, IndexedDB CRUD, backup/restore round-trip, desktop/mobile, accessibility, offline cache update.
+- Documentation updated: architecture, ownership, dependency map, data contract, status, FAQ, change protocol, inventory, checklist, and guide index.
+- Reviewed/no change: SHARED-POLICIES.md (capability semantics unchanged), DATA-COMPATIBILITY.md (no persisted data/schema/backup change), README.md (guide entry point already present).
+- Known debt: compatibility facades remain by design; physical implementation files have not been moved; runtime verification is outstanding.

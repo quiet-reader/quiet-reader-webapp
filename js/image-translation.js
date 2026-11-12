@@ -1,5 +1,5 @@
 import {$,esc,toast,modal,closeModal} from './utils.js';
-import {translateImageText,getImageTranslationSources} from './translation.js';
+import {translateImageText,getImageTranslationSources} from './features/translation/index.js';
 
 const overlays=new Map();
 let worker=null,workerLanguage='';

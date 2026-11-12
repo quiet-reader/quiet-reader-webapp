@@ -1,4 +1,4 @@
-import {libraryState} from './state/library.js';import {readerState} from './state/reader.js';import {put} from './db.js';import {$,esc,toast,modal} from './utils.js';import {openReader} from './reader.js';
+import {libraryState} from './state/library.js';import {readerState} from './state/reader.js';import {itemRepository as itemStore} from './infrastructure/persistence/item-repository.js';import {$,esc,toast,modal} from './utils.js';import {openReader} from './features/reader/index.js';
 function textOffset(root,target,offset){
  const range=document.createRange();
  try{range.selectNodeContents(root);range.setEnd(target,offset);return range.toString().length}catch{return 0}
@@ -12,7 +12,7 @@ export async function addHighlight(color='yellow',savedRange=null){
  const raw=range.toString(),quote=raw.trim();if(!quote)return toast('Select some text first');
  const leading=raw.length-raw.trimStart().length,start=textOffset(root,range.startContainer,range.startOffset)+leading,end=start+quote.length;
  libraryState.book.highlights=libraryState.book.highlights||[];libraryState.book.highlights.push({id:crypto.randomUUID?.()||String(Date.now())+Math.random(),chapter:readerState.chapter,text:quote,start,end,color,note:'',locked:false,created:Date.now()});
- try{await put(libraryState.book);selection?.removeAllRanges();hideSelectionToolbar();renderHighlights();toast('Highlight saved')}catch(error){console.error(error);toast('Could not save highlight')}
+ try{await itemStore.save(libraryState.book);selection?.removeAllRanges();hideSelectionToolbar();renderHighlights();toast('Highlight saved')}catch(error){console.error(error);toast('Could not save highlight')}
 }
 export async function addParagraphHighlight(paragraph,color='yellow'){
  const root=$('readingBody');if(!libraryState.book||!root)return toast('Open a chapter first');
@@ -20,7 +20,7 @@ export async function addParagraphHighlight(paragraph,color='yellow'){
  const range=document.createRange();range.selectNodeContents(paragraph);const raw=range.toString(),quote=raw.trim();if(!quote)return toast('This paragraph has no text to highlight');
  const leading=raw.length-raw.trimStart().length,start=textOffset(root,range.startContainer,range.startOffset)+leading,end=start+quote.length;
  libraryState.book.highlights=libraryState.book.highlights||[];libraryState.book.highlights.push({id:crypto.randomUUID?.()||String(Date.now())+Math.random(),chapter:readerState.chapter,text:quote,start,end,color,note:'',locked:false,created:Date.now(),scope:'paragraph'});
- try{await put(libraryState.book);hideSelectionToolbar();getSelection()?.removeAllRanges();renderHighlights();toast('Paragraph highlighted')}catch(error){console.error(error);toast('Could not save paragraph highlight')}
+ try{await itemStore.save(libraryState.book);hideSelectionToolbar();getSelection()?.removeAllRanges();renderHighlights();toast('Paragraph highlighted')}catch(error){console.error(error);toast('Could not save paragraph highlight')}
 }
 export function renderHighlights(){
  const root=$('readingBody');if(!root||!libraryState.book)return;
@@ -40,8 +40,8 @@ export function renderHighlights(){
  // when a highlight starts and ends inside the same text node or overlaps another mark.
  for(const item of nodes){if(!item.node.isConnected)continue;const value=item.node.nodeValue,overlaps=ranges.filter(m=>m.end>item.start&&m.start<item.end);if(!overlaps.length)continue;const cuts=[item.start,item.end,...overlaps.flatMap(m=>[Math.max(item.start,m.start),Math.min(item.end,m.end)])].sort((a,b)=>a-b).filter((v,i,a)=>i===0||v!==a[i-1]);const fragment=document.createDocumentFragment();for(let i=0;i<cuts.length-1;i++){const from=cuts[i],to=cuts[i+1];if(to<=from)continue;const chosen=overlaps.filter(m=>m.start<=from&&m.end>=to).sort((a,b)=>(b.created||0)-(a.created||0))[0];const textNode=document.createTextNode(value.slice(from-item.start,to-item.start));if(chosen){const mark=document.createElement('mark');mark.dataset.highlight=chosen.id;mark.dataset.color=chosen.color||'yellow';mark.append(textNode);fragment.append(mark)}else fragment.append(textNode)}item.node.replaceWith(fragment)}
 }
-async function removeMark(book,kind,id){const mark=(book[kind]||[]).find(x=>x.id===id);if(mark?.locked)return toast('Unlock this saved item before deleting it');book[kind]=(book[kind]||[]).filter(x=>x.id!==id);await put(book);showMarks()}
-async function toggleMarkLock(book,kind,id){const mark=(book[kind]||[]).find(x=>x.id===id);if(!mark)return;mark.locked=!mark.locked;await put(book);showMarks();toast(mark.locked?'Saved item locked':'Saved item unlocked')}
+async function removeMark(book,kind,id){const mark=(book[kind]||[]).find(x=>x.id===id);if(mark?.locked)return toast('Unlock this saved item before deleting it');book[kind]=(book[kind]||[]).filter(x=>x.id!==id);await itemStore.save(book);showMarks()}
+async function toggleMarkLock(book,kind,id){const mark=(book[kind]||[]).find(x=>x.id===id);if(!mark)return;mark.locked=!mark.locked;await itemStore.save(book);showMarks();toast(mark.locked?'Saved item locked':'Saved item unlocked')}
 export function showMarks(){
  const books=libraryState.books?.length?libraryState.books:(libraryState.book?[libraryState.book]:[]);
  const allEntries=books.flatMap(book=>[...(book.bookmarks||[]).map(x=>({...x,type:'Bookmark',kind:'bookmarks',bookId:book.id,bookTitle:book.title,bookAuthor:book.author})),...(book.highlights||[]).map(x=>({...x,type:'Highlight',kind:'highlights',bookId:book.id,bookTitle:book.title,bookAuthor:book.author}))]).sort((a,b)=>(b.created||0)-(a.created||0));
@@ -63,8 +63,8 @@ export function showMarks(){
    const lock=e.target.closest('[data-toggle-mark-lock]');if(lock){const book=libraryState.books.find(x=>x.id===lock.dataset.bookId)||books.find(x=>x.id===lock.dataset.bookId);if(book)await toggleMarkLock(book,lock.dataset.kind,lock.dataset.toggleMarkLock);return}
    const del=e.target.closest('[data-remove-mark]');if(del){const book=libraryState.books.find(x=>x.id===del.dataset.bookId)||books.find(x=>x.id===del.dataset.bookId);if(book)await removeMark(book,del.dataset.kind,del.dataset.removeMark)}
   };
-  $('modalHost').onchange=async e=>{const id=e.target.dataset.note;if(!id)return;const book=libraryState.books.find(x=>x.id===e.target.dataset.bookId)||books.find(x=>x.id===e.target.dataset.bookId);const mark=book?.highlights?.find(x=>x.id===id);if(mark){mark.note=e.target.value;await put(book)}};
+  $('modalHost').onchange=async e=>{const id=e.target.dataset.note;if(!id)return;const book=libraryState.books.find(x=>x.id===e.target.dataset.bookId)||books.find(x=>x.id===e.target.dataset.bookId);const mark=book?.highlights?.find(x=>x.id===id);if(mark){mark.note=e.target.value;await itemStore.save(book)}};
  });
 }
-export async function bookmarkFromSelection(){const book=libraryState.book;if(!book)return toast('Open a novel first');book.bookmarks=book.bookmarks||[];if(book.bookmarks.some(x=>Number(x.chapter)===Number(readerState.chapter)))return toast('This chapter is already bookmarked');const selection=getSelection(),range=selection&&!selection.isCollapsed&&selection.rangeCount?selection.getRangeAt(0):null,rect=range?.getBoundingClientRect(),anchorOffset=rect&&rect.height?window.scrollY+rect.top+rect.height/2:window.scrollY+window.innerHeight/2;book.bookmarks.push({id:crypto.randomUUID?.()||String(Date.now()),chapter:readerState.chapter,offset:window.scrollY,anchorOffset,text:range?.toString().trim()||$('readingTitle')?.textContent||'Chapter '+(readerState.chapter+1),created:Date.now(),locked:false});await put(book);hideSelectionToolbar();getSelection()?.removeAllRanges();toast('Bookmark saved')}
+export async function bookmarkFromSelection(){const book=libraryState.book;if(!book)return toast('Open a novel first');book.bookmarks=book.bookmarks||[];if(book.bookmarks.some(x=>Number(x.chapter)===Number(readerState.chapter)))return toast('This chapter is already bookmarked');const selection=getSelection(),range=selection&&!selection.isCollapsed&&selection.rangeCount?selection.getRangeAt(0):null,rect=range?.getBoundingClientRect(),anchorOffset=rect&&rect.height?window.scrollY+rect.top+rect.height/2:window.scrollY+window.innerHeight/2;book.bookmarks.push({id:crypto.randomUUID?.()||String(Date.now()),chapter:readerState.chapter,offset:window.scrollY,anchorOffset,text:range?.toString().trim()||$('readingTitle')?.textContent||'Chapter '+(readerState.chapter+1),created:Date.now(),locked:false});await itemStore.save(book);hideSelectionToolbar();getSelection()?.removeAllRanges();toast('Bookmark saved')}
 export function afterReaderRender(){renderHighlights()}
