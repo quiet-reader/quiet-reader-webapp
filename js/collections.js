@@ -36,12 +36,12 @@ export async function addToCollection(type,book,childIndex=null){
    const index=collection.items.findIndex(item=>sameReference(item,ref));
    if(index>=0){collection.items.splice(index,1);toast('Removed from '+collection.name)}
    else{collection.items.push(ref);toast('Added to '+collection.name)}
-   writeCollections(readCollections().map(item=>item.id===collection.id?collection:item));render();
+   writeCollections(readCollections().map(item=>item.id===collection.id?collection:item));window.dispatchEvent(new Event('quiet-reader-collections-changed'));render();
   };
   $('collectionPickerCreate').onclick=()=>{
    const name=$('collectionPickerNewName').value.trim();if(!name)return toast('Enter a collection name');
    const all=readCollections();if(all.some(item=>item.name.toLocaleLowerCase()===name.toLocaleLowerCase()))return toast('A collection with that name already exists');
-   all.push({id:makeId(),name,createdAt:new Date().toISOString(),items:[ref]});writeCollections(all);$('collectionPickerNewName').value='';toast('Created '+name);render();
+   all.push({id:makeId(),name,createdAt:new Date().toISOString(),items:[ref]});writeCollections(all);$('collectionPickerNewName').value='';toast('Created '+name);window.dispatchEvent(new Event('quiet-reader-collections-changed'));render();
   };
   render();
  });
