@@ -159,3 +159,14 @@ If a document is reviewed and does not need editing, state "reviewed — no chan
 - Tests not run: browser runtime, interaction tests, IndexedDB CRUD, backup/restore round-trip, import/export, mobile/desktop, accessibility, offline cache update, automated suite.
 - Known limitations: some presentation-only lock checks remain direct; no automated tests or runtime verification; shared state and known import cycles remain.
 - Guide files updated: README, guide index, architecture, inventory, data compatibility, checklist; new ownership, dependency, shared-policy, data-contract, change-protocol, FAQ, and architecture-status pages.
+
+## V3 capability enforcement follow-up — 12 Nov 2026
+
+- Change: close operation-boundary gaps found during static review of the first V3 policy pass.
+- Files: `app.js`, `editor.js`, `library.js`, `galleries.js`.
+- Added guards: save chapter (create vs edit capability), paste editor image, save novel notes, chapter-link action from chapter list, edit current reader chapter, gallery image add/import/paste/rename/reorder/lock/note/delete book-level gates.
+- Behaviour/data: same locked/unlocked semantics; no persisted data or schema change.
+- Verification: static source inspection of updated guards and policy imports.
+- Not run: browser interactions, accessibility, IndexedDB, backup/restore, offline update, full regression.
+- Reviewed / no change: ownership map and dependency map (imports unchanged); data contract (no persisted schema change); FAQ (no changed architectural guidance).
+- Known limitation: some lock-state labels and purely presentational state indicators still read the existing boolean directly; they do not decide authorization. The lock/unlock toggle itself necessarily writes that boolean.

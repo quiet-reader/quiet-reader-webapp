@@ -155,3 +155,7 @@ The detailed ownership and API index is [FEATURE-OWNERSHIP.md](FEATURE-OWNERSHIP
 - Data/schema: none; existing book.locked field remains unchanged.
 - Verification: static source inspection and targeted source replacements; no browser/runtime or regression suite run.
 - Known follow-up: remaining direct lock-based presentation checks and individual gallery-image lock rules are not all routed through the book-level capability module. Shared state and cross-feature imports remain in place.
+
+## V3 capability enforcement follow-up — 12 Nov 2026
+
+A follow-up pass added operation-boundary checks to chapter saving and paste-image entry, note saving, reader-to-editor navigation, and gallery book-level image operations. Gallery image locks remain a separate per-image rule. The book lock is still stored only as `book.locked`; no new permission data is persisted. This is the same V3 architecture phase, not a new feature branch or data migration.

@@ -50,3 +50,9 @@ This page is a maturity assessment, not a claim of production certification. Rat
 5. **Later — verification:** add a small repeatable browser smoke-test path and synthetic data fixture before any schema or backup migration.
 
 Do not start the next phase by moving every file. Choose one high-value seam, map callers, preserve compatibility, and update this status after verification.
+
+## V3 follow-up — capability enforcement pass
+
+A static review found gaps after the initial policy introduction: save-time chapter checks, novel-note persistence, reader-to-editor entry, and several gallery image operations. These now call the shared book-level capability function. This improves consistency at the operation boundary, not just in disabled controls.
+
+The capability policy area should now be assessed as **substantially centralized for the audited book-level editing operations, with runtime verification still outstanding**. The remaining direct `locked` reads are used for state display/toggle semantics or for per-image locks, which are intentionally distinct. This is not proof that every possible mutation path has been exhaustively tested.

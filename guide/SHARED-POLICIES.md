@@ -81,3 +81,16 @@ When adding or changing a shared rule:
 - ensure the policy is checked at the operation boundary, not only in markup;
 - document any intentionally exempt operations;
 - record what was statically inspected and what was actually run.
+
+## V3 follow-up enforcement audit
+
+The shared book capability check is now used at the operation boundary for:
+- book metadata/rating, tags, and cover paste;
+- book deletion;
+- chapter create/edit/delete/rename/reorder, including save-time re-checks and reader-to-editor navigation;
+- novel/chapter link managers and chapter-index entry;
+- gallery-level add/import/paste and book-level image rename/reorder/lock/note/delete operations.
+
+Library controls use the same policy for the corresponding actions. Direct reads of `book.locked` that remain for lock labels, status text, or the lock/unlock control are presentation/state operations, not independent authorization rules.
+
+Individual gallery-image locks remain checked alongside the book-level capability. The combined rule is: the book must permit gallery management and the specific image must be unlocked for operations that alter that image; the gallery lock itself may be toggled only when the book permits gallery management.
