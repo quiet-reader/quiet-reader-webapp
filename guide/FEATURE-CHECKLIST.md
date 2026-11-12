@@ -120,3 +120,16 @@ Select relevant cases and run them. For architecture-wide changes, run the full 
 - Tests not run: Browser runtime, IndexedDB CRUD/transaction tests, mobile/desktop UI regression, import/export/backup round-trip, offline update, and automated test suite.
 - Known limitations: Existing features still import the compatibility facade; broader feature boundary migration has not yet been performed.
 - Guide files updated: README link, guide index, architecture, data compatibility, feature inventory, checklist.
+
+
+## V2 feature update — 12 Nov 2026
+
+- Change / feature: Move batch-rename chapter selection from chapter-index rows into a searchable selection list in the rename dialog; add forward/reverse numbering order; enforce editing lock on novel/chapter link management.
+- Branch: `V2-feature`.
+- Behaviour intended to change: Remove index-row checkboxes; add searchable individual/select-all selection and order control to rename dialog; disable link-edit controls and guard link-management entry points while locked.
+- Behaviour required to remain the same: Chapter order itself is unchanged by rename direction; title changes still create chapter history entries and editing history; reading, chapter movement, export, and link navigation remain available as before.
+- Data touched: Only chapter titles and existing chapter history when the user applies a rename; no schema change.
+- Migration/backup impact: None.
+- Tests actually run: Static source inspection and exact-source replacement checks during implementation.
+- Tests not run: Browser UI, mobile/desktop, accessibility, lock/unlock interaction, paired novel/chapter link workflows, data backup/restore, and offline service-worker update.
+- Known limitations: None identified by static inspection; runtime behaviour remains unverified.
