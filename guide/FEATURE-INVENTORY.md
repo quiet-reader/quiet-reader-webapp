@@ -27,7 +27,7 @@ This inventory was checked against the branch's root README, `index.html`, `js/`
 |---|---|
 | `app.js` | Bootstrap and central UI wiring; imports most modules and attaches many event handlers, modals, screen changes and feature actions. Current central orchestration hotspot. |
 | `state.js` | Shared in-memory application state and fresh book creation. |
-| `db.js` | IndexedDB access to `quietbook-v2` / `items`; put, remove, putMany, getAll. |
+| `db.js` | Backward-compatible facade re-exporting the persistence adapter API for existing feature modules. |\n| `infrastructure/persistence/item-repository.js` | New V2 infrastructure adapter for the existing IndexedDB database/store; preserves current record payloads and API operations. |
 | `utils.js` | DOM helpers, escaping, toast/modal, IDs, data URL and download helpers. |
 | `library.js` | Library refresh/render, book detail, book creation/opening, library search/filter/sort, notes and navigation. |
 | `library-counts.js` | Separate library count/summary UI enhancement. |
