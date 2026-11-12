@@ -1,7 +1,7 @@
 import {state,freshBook} from './state.js';
 import {put} from './db.js';
 import {$,esc,toast,modal,closeModal,dataURL,uid} from './utils.js';
-import {refresh,openBook,setBookTab,drawBook} from './library.js';import {addEditEvent} from './history.js';
+import {refresh,openBook,setBookTab,drawBook} from './library.js';import {addEditEvent} from './history.js';import {confirmImagePreview} from './image-preview.js';
 import {openImageTranslation,renderImageTranslationOverlay,clearImageTranslationOverlay} from './image-translation.js';
 
 let sliderIndex=0;
@@ -41,6 +41,7 @@ export function addGalleryFolder(){if(!state.book||state.book.locked)return toas
 export async function importGalleryFiles(fileList){
  const book=state.book;if(!book||book.locked)return toast('Unlock editing first');
  const files=imageFiles(fileList||[]);if(!files.length)return toast('No supported images found');
+ if(!(await confirmImagePreview(files,{title:'Preview gallery images',confirmLabel:'Add to gallery'})))return;
  const gallery=ensureGallery(book);let added=0;
  for(const file of files){try{gallery.images.push({id:uid(),name:(file.webkitRelativePath||file.name).split('/').pop(),data:await dataURL(file),mime:file.type||'application/octet-stream',size:file.size,addedAt:Date.now(),lastOpenedAt:null,notes:'',locked:false,history:[]});added++}catch(error){console.warn('Could not import gallery image',file.name,error)}}
  if(!book.cover&&gallery.images[0])book.cover=gallery.images[0].data;
