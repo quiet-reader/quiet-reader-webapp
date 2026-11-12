@@ -175,3 +175,12 @@ Each phase must leave the branch buildable and usable. Do not combine a full dat
 - No destructive normalization or automatic data conversion during rendering.
 - No removal of existing features merely to simplify the architecture.
 - No speculative abstraction that adds more complexity than the problem it solves.
+
+
+## 12. V2 implementation status
+
+- The first infrastructure seam now exists at `js/infrastructure/persistence/item-repository.js`.
+- `js/db.js` is retained as a backward-compatible facade and re-exports the existing persistence functions. Existing feature modules can continue using their current imports while they are migrated incrementally.
+- The adapter intentionally keeps the current database name (`quietbook-v2`), version (1), store (`items`), key path (`id`), and record payloads unchanged.
+- The service worker shell cache includes the new adapter and has been versioned for this asset change.
+- This is a first step, not completion of the target architecture. Existing feature modules still share state and some still import one another directly. Migrate one feature boundary at a time, update this status, and add tests before changing data contracts.
