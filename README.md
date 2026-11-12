@@ -1,3 +1,5 @@
+> **Engineering rule:** Before implementing any feature, bug fix, UI change, or refactor, read the [Quiet Reader engineering guide](guide/README.md). Its architecture, data-preservation contract, feature inventory, and regression checklist are mandatory. Update the guide whenever the implementation changes.
+
 # Quiet Reader
 
 Quiet Reader is a local-first web reader for personal novels and EPUB books. It runs as a static website; books, notes, reading progress, bookmarks and highlights are stored in the browser's IndexedDB.
