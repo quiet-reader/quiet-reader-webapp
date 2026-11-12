@@ -113,6 +113,10 @@ async function buildArchive(selected){
  const collections=(()=>{try{return JSON.parse(localStorage.getItem('qrCollections')||'[]')}catch{return []}})();
  const fingerprint=await sha256(encoder.encode(records.filter(entry=>entry.role!=='library-index').map(entry=>entry.path+' '+entry.sha256).sort().join('\n')+'\n'+JSON.stringify({selected,collections,theme:library.theme,preferences:library.preferences})));
  const metadata=deviceMetadata();
+ const dataTimestamps=items.flatMap(item=>[item.createdAt,item.addedAt,...(item.chapters||[]).flatMap(chapter=>[chapter.createdAt,chapter.addedAt])]).map(value=>typeof value==='number'?value:Date.parse(value)).filter(Number.isFinite);
+ const dataStart=dataTimestamps.reduce((minimum,value)=>Math.min(minimum,value),metadata.installationStartedAt);
+ metadata.dataStartAt=new Date(dataStart).toISOString();
+ metadata.dataEndAt=library.createdAt;
  const manifest={
   format:ARCHIVE_FORMAT,
   archiveVersion:ARCHIVE_VERSION,
@@ -161,7 +165,7 @@ export async function exportBackup(){
     $('backupDuplicateDetails').textContent='An identical backup was previously created on '+(duplicate.deviceName||'an unknown device')+' at '+new Date(duplicate.createdAt).toLocaleString()+'. Confirm the checkbox to force another export.';
     button.textContent='Export duplicate anyway';refreshButton();return;
    }
-   const entry={id:crypto.randomUUID?.()||String(Date.now()),createdAt:prepared.createdAt,fingerprint:prepared.fingerprint,deviceId:prepared.metadata.deviceId,deviceName:name,applicationVersion:prepared.metadata.applicationVersion,platform:prepared.metadata.platform,sessionStartedAt:prepared.metadata.sessionStartedAt,installationStartedAt:prepared.metadata.installationStartedAt,size:prepared.blob.size,sizeLabel:(prepared.blob.size/1024/1024).toFixed(2)+' MB',status:duplicate?'Forced duplicate export':'Exported'};
+   const entry={id:crypto.randomUUID?.()||String(Date.now()),createdAt:prepared.createdAt,fingerprint:prepared.fingerprint,deviceId:prepared.metadata.deviceId,deviceName:name,applicationVersion:prepared.metadata.applicationVersion,platform:prepared.metadata.platform,sessionStartedAt:prepared.metadata.sessionStartedAt,installationStartedAt:prepared.metadata.installationStartedAt,dataStartAt:prepared.metadata.dataStartAt,dataEndAt:prepared.metadata.dataEndAt,size:prepared.blob.size,sizeLabel:(prepared.blob.size/1024/1024).toFixed(2)+' MB',status:duplicate?'Forced duplicate export':'Exported'};
    download(prepared.blob,'quiet-reader-'+name.toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-'+new Date(prepared.createdAt).toISOString().replace(/[:.]/g,'-')+'.zip');
    saveBackupHistory([...backupHistory(),entry]);closeModal();toast(duplicate?'Forced duplicate backup exported':'ZIP backup created');
   }catch(error){button.disabled=false;button.textContent='Create ZIP backup';alert('Could not create backup: '+(error?.message||error))}
@@ -243,7 +247,7 @@ export async function importBackup(file){
   if(restored.collections?.length){let existing=[];try{existing=JSON.parse(localStorage.getItem('qrCollections')||'[]')}catch{}const mergedCollections=new Map([...existing,...restored.collections].map(collection=>[collection.id||collection.name,collection]));localStorage.setItem('qrCollections',JSON.stringify([...mergedCollections.values()]))}
   const importedHistory=(restored.backupHistory||[]).filter(entry=>entry&&entry.fingerprint);
   const mergedHistory=new Map([...backupHistory(),...importedHistory].map(entry=>[entry.id||entry.fingerprint+'-'+entry.createdAt,entry]));
-  if(restored.fingerprint)mergedHistory.set('import-'+restored.fingerprint+'-'+Date.now(),{id:'import-'+Date.now(),createdAt:restored.createdAt||new Date().toISOString(),fingerprint:restored.fingerprint,deviceId:restored.metadata?.deviceId||'unknown',deviceName:restored.metadata?.deviceName||'Imported backup',applicationVersion:restored.metadata?.applicationVersion||'Unknown',platform:restored.metadata?.platform||'Unknown',sizeLabel:'Imported archive',status:'Imported'});
+  if(restored.fingerprint)mergedHistory.set('import-'+restored.fingerprint+'-'+Date.now(),{id:'import-'+Date.now(),createdAt:restored.createdAt||new Date().toISOString(),fingerprint:restored.fingerprint,deviceId:restored.metadata?.deviceId||'unknown',deviceName:restored.metadata?.deviceName||'Imported backup',applicationVersion:restored.metadata?.applicationVersion||'Unknown',platform:restored.metadata?.platform||'Unknown',sessionStartedAt:restored.metadata?.sessionStartedAt||null,installationStartedAt:restored.metadata?.installationStartedAt||null,dataStartAt:restored.metadata?.dataStartAt||null,dataEndAt:restored.metadata?.dataEndAt||null,sizeLabel:'Imported archive',status:'Imported'});
   saveBackupHistory([...mergedHistory.values()]);
   toast('Backup restored and verified');
   location.reload();
