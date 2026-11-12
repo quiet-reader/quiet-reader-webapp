@@ -8,7 +8,11 @@ const dateTime=value=>Number.isFinite(Number(value))&&Number(value)>0?new Intl.D
 function readUniversalHistory(){try{const raw=localStorage.getItem(UNIVERSAL_HISTORY_KEY);return raw===null?null:JSON.parse(raw)}catch(error){return null}}
 function writeUniversalHistory(entries){try{localStorage.setItem(UNIVERSAL_HISTORY_KEY,JSON.stringify(entries));return true}catch(error){console.warn('Could not save universal history',error);return false}}
 function appendUniversalHistory(entry){
- const entries=readUniversalHistory()||[];
+ let entries=readUniversalHistory();
+ if(entries===null)entries=(state.books||[]).flatMap(book=>[
+  ...(book.readingHistory||[]).map(item=>({...item,kind:'reading',bookId:book.id,bookTitle:book.title||'Untitled novel'})),
+  ...(book.editHistory||[]).map(item=>({...item,kind:'edit',bookId:book.id,bookTitle:book.title||'Untitled novel'}))
+ ]);
  entries.push(entry);
  writeUniversalHistory(entries);
 }

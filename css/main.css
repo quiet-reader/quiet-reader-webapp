@@ -699,7 +699,7 @@ select:focus{animation:select-focus-in .2s ease both}
 .universal-history-tools{display:grid;gap:10px;margin-bottom:14px}
 .universal-history-tools input{width:100%;min-width:0}
 .universal-history-tools button:disabled{opacity:.4;cursor:not-allowed}
-.universal-history-modal .modal{width:min(720px,100%)}
+.modal.universal-history-modal{width:min(720px,100%)}
 .universal-history-modal #universalHistoryList{max-height:min(62vh,680px);overflow:auto}
 .image-import-preview{display:grid;gap:14px}
 .image-import-preview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;max-height:55vh;overflow:auto}
