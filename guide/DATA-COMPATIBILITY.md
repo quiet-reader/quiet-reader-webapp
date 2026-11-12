@@ -95,3 +95,10 @@ Maintain a representative fixture containing at least:
 - appearance and relevant local preferences.
 
 For each migration and backup change, verify counts and IDs before/after and verify the restored content can be opened and edited without loss. Do not put real private user novels in public fixtures; use synthetic representative data.
+
+
+## 8. V2 persistence adapter status
+
+The implementation now routes the legacy `js/db.js` API through `js/infrastructure/persistence/item-repository.js`. This is an infrastructure-boundary change only. It retains the same IndexedDB database name, database version, object-store name, key path, CRUD semantics, and stored object payloads. It does not migrate, rewrite, re-key, normalize, or delete any user records.
+
+Existing feature modules may continue importing from `js/db.js` during gradual migration. New application/infrastructure work should target the repository boundary and must not introduce a second database or duplicate storage format. Any later change to the actual schema requires the full migration procedure in this document.
