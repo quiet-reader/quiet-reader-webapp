@@ -1,6 +1,9 @@
-const DB_NAME='quietbook-v2',STORE='items';let connection;
-export function openDB(){if(connection)return connection;connection=new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=()=>req.result.createObjectStore(STORE,{keyPath:'id'});req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});return connection}
-export async function put(item){const db=await openDB();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(item);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}
-export async function remove(id){const db=await openDB();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}
-export async function putMany(items){const db=await openDB();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');const store=tx.objectStore(STORE);for(const item of items)store.put(item);tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error||new Error('Restore transaction was aborted'));tx.onerror=()=>reject(tx.error)})}
-export async function getAll(){const db=await openDB();return new Promise((resolve,reject)=>{const r=db.transaction(STORE).objectStore(STORE).getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+// Backward-compatible facade for existing feature modules.
+// New application code should depend on the persistence adapter contract instead.
+export {
+  openItemDatabase as openDB,
+  put,
+  remove,
+  putMany,
+  getAll
+} from './infrastructure/persistence/item-repository.js';
