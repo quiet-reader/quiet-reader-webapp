@@ -7,6 +7,17 @@ const ARCHIVE_VERSION=1;
 const LEGACY_FORMAT='QuietBookBackup';
 const encoder=new TextEncoder();
 
+const HISTORY_KEY='qrBackupHistory';
+const DEVICE_ID_KEY='qrDeviceId';
+const DEVICE_NAME_KEY='qrDeviceName';
+const SESSION_STARTED_AT=Date.now();
+const APP_VERSION='3';
+function deviceId(){let id=localStorage.getItem(DEVICE_ID_KEY);if(!id){id=globalThis.crypto?.randomUUID?.()||('dev-'+Math.random().toString(36).slice(2));localStorage.setItem(DEVICE_ID_KEY,id)}return id}
+function backupHistory(){try{const value=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');return Array.isArray(value)?value:[]}catch{return []}}
+function saveBackupHistory(value){localStorage.setItem(HISTORY_KEY,JSON.stringify(value.slice(-100)))}
+function deviceMetadata(){let installed=Number(localStorage.getItem('qrInstallationStartedAt')||0);if(!installed){installed=Date.now();localStorage.setItem('qrInstallationStartedAt',String(installed))}return {deviceId:deviceId(),deviceName:localStorage.getItem(DEVICE_NAME_KEY)||'Unnamed device',application:'Quiet Reader',applicationVersion:APP_VERSION,platform:navigator.userAgent||'Unknown platform',sessionStartedAt:SESSION_STARTED_AT,installationStartedAt:installed}}
+
+
 function clone(value){return structuredClone(value)}
 function bytesToBase64(bytes){
  let binary='';
@@ -98,10 +109,16 @@ async function buildArchive(selected){
   preferences
  };
  await writeJson(archive,records,'library.json',library,'library-index');
+ const fingerprint=await sha256(encoder.encode(records.filter(entry=>entry.role!=='library-index').map(entry=>entry.path+' '+entry.sha256).sort().join('\n')+'\n'+JSON.stringify(selected)));
+ const metadata=deviceMetadata();
  const manifest={
   format:ARCHIVE_FORMAT,
   archiveVersion:ARCHIVE_VERSION,
   createdAt:library.createdAt,
+  fingerprint,
+  origin:metadata,
+  backupHistory:backupHistory(),
+  collections:(()=>{try{return JSON.parse(localStorage.getItem('qrCollections')||'[]')}catch{return []}})(),
   encoding:'UTF-8',
   checksumAlgorithm:'SHA-256',
   libraryIndex:'library.json',
@@ -111,20 +128,40 @@ async function buildArchive(selected){
  const manifestText=JSON.stringify(manifest,null,2),manifestHash=await sha256(encoder.encode(manifestText));
  archive.file('manifest.json',manifestText);
  archive.file('checksums.sha256',checksumText([...records,{path:'manifest.json',sha256:manifestHash}]));
- return archive.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});
+ return {blob:await archive.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}}),fingerprint,metadata,createdAt:library.createdAt};
+}
+export async function openBackupHistory(){
+ const history=backupHistory().slice().reverse();
+ const rows=history.map(entry=>'<div class="modal-item"><b>'+esc(entry.deviceName||'Unknown device')+'</b><div class="tiny muted">'+esc(new Date(entry.createdAt).toLocaleString())+' · '+esc(entry.sizeLabel||'')+'</div><div class="tiny muted">Fingerprint: '+esc((entry.fingerprint||'').slice(0,20))+'… · '+esc(entry.status||'Exported')+'</div></div>').join('');
+ modal('Backup history','<div class="stack"><label>Device name<input id="backupDeviceName" maxlength="60" value="'+esc(localStorage.getItem(DEVICE_NAME_KEY)||'Unnamed device')+'"></label><div class="row"><button id="saveBackupDeviceName" class="primary">Save device name</button></div><hr><h3>Previous backups</h3>'+(rows||'<p class="empty">No backup history on this installation yet.</p>')+'<p class="muted tiny">History is stored locally and is also embedded in new ZIP backups. Clearing browser data removes local history, but imported archives retain their recorded provenance.</p></div>',()=>{
+  $('saveBackupDeviceName').onclick=()=>{const name=$('backupDeviceName').value.trim();if(!name)return toast('Enter a device name');localStorage.setItem(DEVICE_NAME_KEY,name);toast('Device name saved')};
+ });
 }
 export async function exportBackup(){
- modal('Create backup','<div class="stack"><p class="muted tiny">Create a portable ZIP archive. Book data is stored as individual JSON files; covers and chapter images remain separate original image files. Every archive entry is verified with SHA-256 during restore.</p><label class="backup-option"><input type="checkbox" id="backupNovels" checked> Novels and chapters (including covers and images)</label><label class="backup-option"><input type="checkbox" id="backupMarks" checked> Bookmarks and highlights</label><label class="backup-option"><input type="checkbox" id="backupProgress" checked> Reading progress</label><label class="backup-option"><input type="checkbox" id="backupPastes" checked> Saved pasted chapters</label><label class="backup-option"><input type="checkbox" id="backupAppearance" checked> Appearance and reader preferences</label><div class="row"><span class="grow"></span><button id="cancelBackup">Cancel</button><button id="confirmBackup" class="primary">Create ZIP backup</button></div></div>',()=>{
+ modal('Create backup','<div class="stack"><p class="muted tiny">Create a portable ZIP archive. Book data is stored as individual JSON files; covers and chapter images remain separate original image files. Every archive entry is verified with SHA-256 during restore.</p><label>Device name<input id="backupDeviceName" maxlength="60" value="'+esc(localStorage.getItem(DEVICE_NAME_KEY)||'Unnamed device')+'"></label><label class="backup-option"><input type="checkbox" id="backupNovels" checked> Novels and chapters (including covers and images)</label><label class="backup-option"><input type="checkbox" id="backupMarks" checked> Bookmarks and highlights</label><label class="backup-option"><input type="checkbox" id="backupProgress" checked> Reading progress</label><label class="backup-option"><input type="checkbox" id="backupPastes" checked> Saved pasted chapters</label><label class="backup-option"><input type="checkbox" id="backupAppearance" checked> Appearance and reader preferences</label><div id="backupDuplicateWarning" class="modal-item hidden"><b>Duplicate backup detected</b><p class="tiny muted" id="backupDuplicateDetails"></p><label class="backup-option"><input type="checkbox" id="backupForceConfirm"> I understand this backup is a duplicate and still want to export it.</label></div><div class="row"><span class="grow"></span><button id="cancelBackup">Cancel</button><button id="confirmBackup" class="primary">Create ZIP backup</button></div></div>',()=>{
  $('cancelBackup').onclick=closeModal;
+ let prepared=null,duplicate=null;
+ const force=$('backupForceConfirm');
+ const refreshButton=()=>{$('confirmBackup').disabled=!!duplicate&&!force?.checked};
+ force?.addEventListener('change',refreshButton);
  $('confirmBackup').onclick=async()=>{
   const button=$('confirmBackup');
   const selected={novels:$('backupNovels').checked,marks:$('backupMarks').checked,progress:$('backupProgress').checked,pastes:$('backupPastes').checked,appearance:$('backupAppearance').checked};
   if(!Object.values(selected).some(Boolean))return toast('Select at least one backup category');
+  const name=$('backupDeviceName').value.trim();if(!name)return toast('Enter a device name');
+  localStorage.setItem(DEVICE_NAME_KEY,name);
   button.disabled=true;button.textContent='Preparing archive…';
   try{
-   const blob=await buildArchive(selected);
-   download(blob,'quiet-reader-backup.zip');
-   closeModal();toast('ZIP backup created');
+   if(!prepared)prepared=await buildArchive(selected);
+   duplicate=backupHistory().find(entry=>entry.fingerprint===prepared.fingerprint)||null;
+   if(duplicate&&!force?.checked){
+    $('backupDuplicateWarning').classList.remove('hidden');
+    $('backupDuplicateDetails').textContent='An identical backup was previously created on '+(duplicate.deviceName||'an unknown device')+' at '+new Date(duplicate.createdAt).toLocaleString()+'. Confirm the checkbox to force another export.';
+    button.textContent='Export duplicate anyway';refreshButton();return;
+   }
+   const entry={id:crypto.randomUUID?.()||String(Date.now()),createdAt:prepared.createdAt,fingerprint:prepared.fingerprint,deviceId:prepared.metadata.deviceId,deviceName:name,applicationVersion:prepared.metadata.applicationVersion,platform:prepared.metadata.platform,sessionStartedAt:prepared.metadata.sessionStartedAt,installationStartedAt:prepared.metadata.installationStartedAt,size:prepared.blob.size,sizeLabel:(prepared.blob.size/1024/1024).toFixed(2)+' MB',status:duplicate?'Forced duplicate export':'Exported'};
+   download(prepared.blob,'quiet-reader-'+name.toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-'+new Date(prepared.createdAt).toISOString().replace(/[:.]/g,'-')+'.zip');
+   saveBackupHistory([...backupHistory(),entry]);closeModal();toast(duplicate?'Forced duplicate backup exported':'ZIP backup created');
   }catch(error){button.disabled=false;button.textContent='Create ZIP backup';alert('Could not create backup: '+(error?.message||error))}
  };
 });
@@ -175,14 +212,14 @@ async function readZipArchive(file){
  const restored=[];
  for(const ref of library.books){const item=await readItem(ref);if(item.kind!=='book'||item.id!==ref.id)throw new Error('A book entry does not match its library index.');restored.push(await hydrate(item))}
  for(const ref of library.pastes){const item=await readItem(ref);if(item.kind!=='paste'||item.id!==ref.id)throw new Error('A paste entry does not match its library index.');restored.push(item)}
- return {items:restored,theme:library.theme,preferences:library.preferences};
+ return {items:restored,theme:library.theme,preferences:library.preferences,metadata:manifest.origin||null,fingerprint:manifest.fingerprint||null,backupHistory:Array.isArray(manifest.backupHistory)?manifest.backupHistory:[],createdAt:manifest.createdAt||null};
 }
 function parseLegacyBackup(data){
  if(data.format!==LEGACY_FORMAT)throw new Error('This is not a supported Quiet Reader backup.');
  if(![2,3].includes(Number(data.version)))throw new Error('Unsupported legacy JSON backup version.');
  const items=data.items||[...(data.books||[]),...(data.pastes||[])];
  if(!Array.isArray(items))throw new Error('The JSON backup does not contain a valid item list.');
- return {items,theme:data.theme,preferences:data.preferences};
+ return {items,theme:data.theme,preferences:data.preferences,metadata:null,fingerprint:null,backupHistory:[],createdAt:null};
 }
 function applyPreferences(data){
  if(data.theme)applyTheme(data.theme);
@@ -201,6 +238,11 @@ export async function importBackup(file){
   // Validate the entire archive before writing anything; one IndexedDB transaction commits all records.
   await itemStore.saveMany(restored.items);
   applyPreferences(restored);
+  if(restored.collections?.length){let existing=[];try{existing=JSON.parse(localStorage.getItem('qrCollections')||'[]')}catch{}const mergedCollections=new Map([...existing,...restored.collections].map(collection=>[collection.id||collection.name,collection]));localStorage.setItem('qrCollections',JSON.stringify([...mergedCollections.values()]))}
+  const importedHistory=(restored.backupHistory||[]).filter(entry=>entry&&entry.fingerprint);
+  const mergedHistory=new Map([...backupHistory(),...importedHistory].map(entry=>[entry.id||entry.fingerprint+'-'+entry.createdAt,entry]));
+  if(restored.fingerprint)mergedHistory.set('import-'+restored.fingerprint+'-'+Date.now(),{id:'import-'+Date.now(),createdAt:restored.createdAt||new Date().toISOString(),fingerprint:restored.fingerprint,deviceId:restored.metadata?.deviceId||'unknown',deviceName:restored.metadata?.deviceName||'Imported backup',applicationVersion:restored.metadata?.applicationVersion||'Unknown',platform:restored.metadata?.platform||'Unknown',sizeLabel:'Imported archive',status:'Imported'});
+  saveBackupHistory([...mergedHistory.values()]);
   toast('Backup restored and verified');
   location.reload();
  }catch(error){alert('Could not restore backup: '+(error?.message||error))}

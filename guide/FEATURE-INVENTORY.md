@@ -17,7 +17,8 @@ This inventory was checked against the branch's root README, `index.html`, `js/`
 - **Gallery:** image import and folder import, paste, grid/compact/slideshow views, fullscreen viewer, zoom/pan, thumbnails, image notes, lock/unlock, reorder, rename/bulk rename, image history, gallery history, storage-size display.
 - **History and marks:** per-book reading/editing history, universal reading history, bookmarks, highlights, search and management.
 - **Translation:** provider configuration, whole-chapter translation, restore original, copy translation, image OCR and translation to English.
-- **Backup and import/export:** full ZIP backup/restore, legacy JSON backup import, EPUB import/export, PDF import, TXT imports.
+- **Backup and import/export:** full ZIP backup/restore, SHA-256 content fingerprint duplicate detection, local backup history/device identity, embedded backup provenance and collection metadata, legacy JSON backup import, EPUB import/export, PDF import, TXT imports.
+- **Library organization:** per-item pinning and favourites; named virtual collections referencing books, chapters and gallery images without duplicating their content.
 - **Appearance:** reader/app themes and tag colors.
 - **Offline shell:** service worker shell/runtime caching; static hosting, local-first IndexedDB library.
 
@@ -29,7 +30,7 @@ This inventory was checked against the branch's root README, `index.html`, `js/`
 | `state.js` | Shared in-memory application state and fresh book creation. |
 | `db.js` | Backward-compatible facade re-exporting legacy persistence names; new feature modules use `itemRepository`. |\n| `infrastructure/persistence/item-repository.js` | New V2 infrastructure adapter for the existing IndexedDB database/store; preserves current record payloads and API operations. |
 | `utils.js` | DOM helpers, escaping, toast/modal, IDs, data URL and download helpers. |
-| `library.js` | Library refresh/render, book detail, book creation/opening, library search/filter/sort, notes and navigation. |
+| `library.js` | Library refresh/render, book detail, book creation/opening, library search/filter/sort, pin/favourite presentation and virtual collection category, notes and navigation. |
 | `library-counts.js` | Separate library count/summary UI enhancement. |
 | `reader.js` | Reader rendering/navigation, chapter search, progress, bookmarks, chapter format, auto-read and TTS controls. |
 | `editor.js` | Chapter editing, saving/deleting, image insertion, TXT import and image paste entry points. |
@@ -187,3 +188,12 @@ A follow-up pass added operation-boundary checks to chapter saving and paste-ima
 - Static source review of state ownership, facade exports, import direction, repository call sites, and service-worker entries.
 - No browser/runtime, automated, IndexedDB CRUD, backup/restore round-trip, accessibility, or offline update test was run.
 - The compatibility state and persistence facades remain intentionally available.
+
+
+## 12 Nov 2026 — Backup history and library organization
+
+- Added local backup history, editable device name, per-installation device ID, application/platform/session/installation metadata, SHA-256 content fingerprints, duplicate detection and explicit forced duplicate export confirmation.
+- ZIP manifests now carry provenance, prior backup history and virtual collection metadata; restore merges history and collections while retaining additive item restore semantics.
+- Added pin and favourite flags to book records; pins sort to the top within the active library category and remain in that category.
+- Added virtual collections for books, chapters and gallery images. Collections store stable ID references, do not duplicate source content, and automatically prune invalid references while preserving empty collections.
+- Verification status: source-level inspection only; browser and offline smoke tests not run in this environment.

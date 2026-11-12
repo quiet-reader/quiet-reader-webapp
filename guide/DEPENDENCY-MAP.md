@@ -69,3 +69,11 @@ No direct feature implementation cycle is intended in the current facade graph. 
 4. Trace the state slices and persisted record fields touched.
 5. Confirm the dependency does not point back through another facade.
 6. Update this map in the same commit.
+
+
+## Added V3 collection boundary (12 Nov 2026)
+
+- `app.js` and `library.js` consume the collections public facade `features/collections/index.js`.
+- The facade delegates to `collections.js`, which uses `itemRepository` and shared DOM utilities; it does not import library or app modules.
+- `service-worker.js` pre-caches both the implementation and facade.
+- No reverse dependency from collections into library, reader, or app is introduced.

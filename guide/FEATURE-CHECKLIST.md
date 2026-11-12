@@ -187,3 +187,11 @@ If a document is reviewed and does not need editing, state "reviewed — no chan
 - Documentation updated: architecture, ownership, dependency map, data contract, status, FAQ, change protocol, inventory, checklist, and guide index.
 - Reviewed/no change: SHARED-POLICIES.md (capability semantics unchanged), DATA-COMPATIBILITY.md (no persisted data/schema/backup change), README.md (guide entry point already present).
 - Known debt: compatibility facades remain by design; physical implementation files have not been moved; runtime verification is outstanding.
+
+
+## Backup history and virtual collections — 12 Nov 2026
+
+- Implemented: backup history, device naming/identity, session/platform/version metadata, content fingerprinting, duplicate warning and forced export acknowledgement.
+- Implemented: pin/favourite card actions, pinned-first ordering within existing category, virtual collections for books/chapters/gallery images, stable references and invalid-reference pruning.
+- Implemented: ZIP backup includes collection/history/provenance metadata; restore merges metadata and remains additive for IndexedDB items.
+- Tests not run: browser functional tests, offline service-worker update, mobile/desktop layout, large archive and cross-device restore. Source inspection only.

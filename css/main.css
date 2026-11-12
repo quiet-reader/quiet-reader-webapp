@@ -715,3 +715,6 @@ select:focus{animation:select-focus-in .2s ease both}
 .rename-chapter-choice b{font-size:12px;overflow-wrap:anywhere}
 .rename-chapter-choice small{font-size:10px;color:var(--muted)}
 .chapter-link-edit:disabled{opacity:.38;cursor:not-allowed}
+
+/* Library pins, favourites, and virtual collections */
+.book-cover{position:relative}.book-card-quick-actions{position:absolute;top:7px;right:7px;z-index:2}.book-card-quick-actions button{width:29px;height:29px;padding:0;border:1px solid #ffffff55;border-radius:50%;background:#15151555;color:#fff;backdrop-filter:blur(7px);opacity:.78}.book-card-quick-actions button.active{background:#ffffff30;opacity:1}.favorite-toggle{font-size:19px;line-height:1;color:var(--muted)}.favorite-toggle.active{color:#e47791}.collection-grid{display:grid;gap:14px}.collection-card{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:14px}.collection-card h3{margin:0 0 4px}.collection-items{display:grid;gap:6px;margin-top:12px}.collection-item{text-align:left;display:flex;justify-content:space-between;gap:10px}

@@ -129,3 +129,12 @@ V3 introduces `js/shared/policies.js` but does not change the meaning or storage
 ### Backup contract
 
 The current ZIP and legacy JSON formats remain as specified in [backup-format.md](../docs/backup-format.md). Architecture refactoring must not make backup payloads dependent on UI component state, module-private objects, or a specific future frontend.
+
+
+## Backup history and library organization additions (12 Nov 2026)
+
+- Book records may include optional boolean `pinned` and `favorite` fields. These are preserved by existing full-record backup/restore and require no database migration.
+- Virtual collections are stored in localStorage under `qrCollections`; each collection has a stable ID, name, creation timestamp, and references using stable book IDs plus stable chapter/image IDs. Collection references never duplicate book/chapter/image payloads.
+- Backup ZIP manifests optionally include `origin` (device ID/name, application/version, platform, session start and installation start), `fingerprint`, `backupHistory`, and `collections`. Older ZIP and legacy JSON backups remain readable; missing metadata is treated as absent.
+- Local history and device settings use localStorage keys `qrBackupHistory`, `qrDeviceId`, `qrDeviceName`, and `qrInstallationStartedAt`. Restoring a backup merges historical entries and collections; current local device identity remains local to the receiving installation.
+- Deleting a source record or nested chapter/image leaves the collection itself intact; invalid references are pruned when collections are rendered.

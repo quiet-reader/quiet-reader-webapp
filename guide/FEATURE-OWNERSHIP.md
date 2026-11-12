@@ -99,3 +99,11 @@ The public entry points are explicit facades. Consumers should import these path
 - `presentation/navigation.js`: owns DOM screen transitions.
 - `infrastructure/persistence/item-repository.js`: owns generic IndexedDB record access.
 - `db.js`: compatibility exports only.
+
+
+## Virtual collections and library preferences
+
+- Owner: `js/collections.js` (public facade: `js/features/collections/index.js`).
+- Responsibilities: persist named virtual collection definitions in `qrCollections`, maintain stable references to book/chapter/gallery-image IDs, prune invalid references while retaining collections, and update book-level pin/favourite flags through the item repository.
+- Public API: `addToCollection(type, book, childIndex)`, `togglePin(book)`, `toggleFavorite(book)`, `renderCollections(host)`.
+- Persistence: collection definitions in localStorage; `pinned` and `favorite` optional fields on book records. No DB schema change.

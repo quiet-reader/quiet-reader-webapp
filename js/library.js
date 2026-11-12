@@ -1,4 +1,4 @@
-import {libraryState} from './state/library.js';import {readerState} from './state/reader.js';import {navigationState} from './state/navigation.js';import {freshBook} from './domain/book.js';import {setScreen} from './presentation/navigation.js';import {itemRepository as itemStore} from './infrastructure/persistence/item-repository.js';import {$,esc,toast,modal} from './utils.js';import {openReader} from './features/reader/index.js';import {novelHistoryMarkup,addEditEvent} from './features/history/index.js';import {can} from './shared/policies.js';
+import {libraryState} from './state/library.js';import {readerState} from './state/reader.js';import {navigationState} from './state/navigation.js';import {freshBook} from './domain/book.js';import {setScreen} from './presentation/navigation.js';import {itemRepository as itemStore} from './infrastructure/persistence/item-repository.js';import {$,esc,toast,modal} from './utils.js';import {openReader} from './features/reader/index.js';import {novelHistoryMarkup,addEditEvent} from './features/history/index.js';import {can} from './shared/policies.js';import {renderCollections} from './features/collections/index.js';
 let currentBookTab='chapters';
 let librarySearchQuery='';
 let librarySearchMode='everything';
@@ -7,7 +7,7 @@ const defaultTagColors=['#d7c477','#83b8e8','#8bc58b','#e7a0bd','#b9a0e8','#e5a1
 function savedTagColors(){try{return JSON.parse(localStorage.getItem('qrTagColors')||'{}')}catch{return {}}}
 function tagColor(tag,index){return savedTagColors()[tag]||defaultTagColors[index%defaultTagColors.length]}
 export async function refresh(){const items=await itemStore.getAll();libraryState.books=items.filter(x=>x.kind==='book');libraryState.pastes=items.filter(x=>x.kind==='paste');drawLibrary()}
-export function drawLibrary(){
+export function drawLibrary(){if(libraryState.filter==='collections'){$('bookGrid')?.classList.add('hidden');$('collectionGrid')?.classList.remove('hidden');$('pasteList')?.classList.add('hidden');void renderCollections($('collectionGrid'));return}$('bookGrid')?.classList.remove('hidden');$('collectionGrid')?.classList.add('hidden');$('pasteList')?.classList.remove('hidden');
  const availableTags=[...new Set(libraryState.books.flatMap(b=>Array.isArray(b.tags)?b.tags:[]).map(t=>String(t).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
  const tagSelect=$('tagFilter');
  if(tagSelect){const selected=libraryState.tagFilter||'all';tagSelect.innerHTML='<option value="all">All tags</option>'+availableTags.map(t=>'<option value="'+esc(t)+'">'+esc(t)+'</option>').join('');tagSelect.value=availableTags.includes(selected)?selected:'all';libraryState.tagFilter=tagSelect.value}
@@ -18,7 +18,7 @@ export function drawLibrary(){
   if(!query)return true;
   if(librarySearchMode==='author')return String(b.author||'').toLocaleLowerCase().includes(query);
   return [b.title,b.author,...(b.chapters||[]).flatMap(ch=>[ch.title,ch.text])].some(value=>String(value||'').toLocaleLowerCase().includes(query));
- });const sort=$('librarySort')?.value||localStorage.getItem('qrLibrarySort')||'recent';list.sort((a,b)=>{const chars=x=>(x.chapters||[]).reduce((sum,ch)=>sum+String(ch.text||'').length,0);if(sort==='title')return String(a.title||'').localeCompare(String(b.title||''));if(sort==='rating-asc')return (Number(a.rating)||0)-(Number(b.rating)||0);if(sort==='rating-desc')return (Number(b.rating)||0)-(Number(a.rating)||0);if(sort==='characters-desc')return chars(b)-chars(a);if(sort==='characters-asc')return chars(a)-chars(b);return (b.updated||0)-(a.updated||0)});const grid=$('bookGrid');
+ });const sort=$('librarySort')?.value||localStorage.getItem('qrLibrarySort')||'recent';list.sort((a,b)=>{if(!!a.pinned!==!!b.pinned)return a.pinned?-1:1;const chars=x=>(x.chapters||[]).reduce((sum,ch)=>sum+String(ch.text||'').length,0);if(sort==='title')return String(a.title||'').localeCompare(String(b.title||''));if(sort==='rating-asc')return (Number(a.rating)||0)-(Number(b.rating)||0);if(sort==='rating-desc')return (Number(b.rating)||0)-(Number(a.rating)||0);if(sort==='characters-desc')return chars(b)-chars(a);if(sort==='characters-asc')return chars(a)-chars(b);return (b.updated||0)-(a.updated||0)});const grid=$('bookGrid');
  grid.innerHTML='';
  const view=localStorage.getItem('qrLibraryView')||'expanded';grid.classList.toggle('compact-view',view==='compact');document.querySelectorAll('[data-library-view]').forEach(button=>{button.classList.toggle('active',button.dataset.libraryView===view);button.setAttribute('aria-pressed',String(button.dataset.libraryView===view))});
  if(!list.length)grid.innerHTML='<div class="empty">No books match this filter.</div>';
