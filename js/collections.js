@@ -23,7 +23,7 @@ export async function addToCollection(type,book,childIndex=null){
  let collection=collections.find(item=>String(item.name).toLocaleLowerCase()===name.toLocaleLowerCase());
  if(!collection){collection={id:makeId(),name,createdAt:new Date().toISOString(),items:[]};collections.push(collection)}
  const ref={type,bookId:book.id};if(type==='chapter')ref.chapterId=child.id;if(type==='image')ref.imageId=child.id;
- if(!collection.items.some(item=>item.type===ref.type&&item.bookId===ref.bookId&&(item.chapterId||'')===(ref.chapterId||'')&&(item.imageId||'')===(ref.imageId||'')))collection.items.push(ref);
+ if(!collection.items.some(item=>item.type===ref.type&&item.bookId===ref.bookId&&(item.chapterId||'')===(ref.chapterId||'')&&(item.imageId||'')===(ref.imageId||''))collection.items.push(ref);
  write(collections);toast('Added to '+collection.name);
 }
 export async function togglePin(book){book.pinned=!book.pinned;book.updated=Date.now();await itemRepository.save(book);toast(book.pinned?'Pinned at the top of this category':'Unpinned')}
