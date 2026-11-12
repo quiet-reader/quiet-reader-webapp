@@ -1,10 +1,10 @@
-import {state} from './state.js';
+import {libraryState} from './state/library.js';
 import {put} from './db.js';
 import {$,esc,toast,modal,closeModal} from './utils.js';
 import {drawBook,refresh} from './library.js';import {addEditEvent} from './history.js';import {can} from './shared/policies.js';
 
 export function renameChapters(){
- const book=state.book;
+ const book=libraryState.book;
  if(!book?.chapters?.length)return toast('There are no chapters to rename');
  if(!can(book,'chapter.rename'))return toast('Unlock this novel before renaming chapters');
  const selected=new Set();

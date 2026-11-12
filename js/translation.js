@@ -1,5 +1,5 @@
 import { $, esc, toast, modal, closeModal } from './utils.js';
-import { state } from './state.js';
+import { libraryState } from './state/library.js';import { readerState } from './state/reader.js';
 import { chapterHTML } from './reader.js';
 import { renderHighlights } from './highlights.js';
 
@@ -46,27 +46,27 @@ export function manageTranslationSources(){
  });
 }
 function translationMarkup(text){
- const chapter=state.book?.chapters?.[state.chapter];if(!chapter)return;
+ const chapter=libraryState.book?.chapters?.[readerState.chapter];if(!chapter)return;
  $('readingBody').innerHTML=chapterHTML({...chapter,text});
  $('readingBody').classList.remove('hidden');$('sectionView').classList.add('hidden');
  $('chapterFormatControls').querySelectorAll('[data-chapter-format]').forEach(button=>button.disabled=true);
 }
 function updateControls(){
- const active=translated.bookId===state.book?.id&&translated.chapter===state.chapter&&translated.originalText===state.book?.chapters?.[state.chapter]?.text&&typeof translated.text==='string';
+ const active=translated.bookId===libraryState.book?.id&&translated.chapter===readerState.chapter&&translated.originalText===libraryState.book?.chapters?.[readerState.chapter]?.text&&typeof translated.text==='string';
  const show=$('restoreTranslation'),copy=$('copyTranslatedChapter');
  if(show)show.classList.toggle('hidden',!active);
  if(copy)copy.classList.toggle('hidden',!active);
  const button=$('translateChapter');if(button){button.textContent=active?'Translated':'Translate page';button.disabled=false}
 }
 export function restoreOriginalChapter(){
- if(translated.bookId!==state.book?.id||translated.chapter!==state.chapter||translated.originalText!==state.book?.chapters?.[state.chapter]?.text)return;
+ if(translated.bookId!==libraryState.book?.id||translated.chapter!==readerState.chapter||translated.originalText!==libraryState.book?.chapters?.[readerState.chapter]?.text)return;
  translated={bookId:null,chapter:null,text:null};
- const c=state.book.chapters[state.chapter];$('readingBody').innerHTML=chapterHTML(c);
+ const c=libraryState.book.chapters[readerState.chapter];$('readingBody').innerHTML=chapterHTML(c);
  $('chapterFormatControls').querySelectorAll('[data-chapter-format]').forEach(button=>button.disabled=false);
  renderHighlights();updateControls();
 }
 export async function copyTranslatedChapter(){
- if(translated.bookId!==state.book?.id||translated.chapter!==state.chapter||translated.originalText!==state.book?.chapters?.[state.chapter]?.text||typeof translated.text!=='string')return toast('Translate this chapter first');
+ if(translated.bookId!==libraryState.book?.id||translated.chapter!==readerState.chapter||translated.originalText!==libraryState.book?.chapters?.[readerState.chapter]?.text||typeof translated.text!=='string')return toast('Translate this chapter first');
  try{await navigator.clipboard.writeText(translated.text);toast('Translated chapter copied')}catch{const ta=document.createElement('textarea');ta.value=translated.text;document.body.append(ta);ta.select();const ok=document.execCommand('copy');ta.remove();toast(ok?'Translated chapter copied':'Could not copy translated chapter')}
 }
 async function translateWith(source,text,target){
@@ -112,7 +112,7 @@ async function translateWith(source,text,target){
 }
 function decodeEntities(value){const el=document.createElement('textarea');el.innerHTML=value;return el.value}
 export function openTranslatePage(){
- if(!state.book?.chapters?.[state.chapter])return toast('No chapter is open');
+ if(!libraryState.book?.chapters?.[readerState.chapter])return toast('No chapter is open');
  const list=sources();
  if(!list.length){manageTranslationSources();toast('Create a translation source first');return}
  const options=list.map(s=>'<option value="'+esc(s.id)+'">'+esc(s.name)+' · '+esc(sourceTypeLabel(s.type))+'</option>').join('');
@@ -123,8 +123,8 @@ export function openTranslatePage(){
   $('trManageSources').onclick=()=>manageTranslationSources();
   $('trStart').onclick=async()=>{
    const source=sources().find(s=>s.id===$('trChooseSource').value),target=$('trTargetLanguage').value.trim();
-   const original=state.book.chapters[state.chapter]?.text;
-   if(source?.type==='omni'){const tab=window.open('https://app.readomni.com/','_blank');try{await navigator.clipboard.writeText(original);$('trProgress').textContent='Chapter copied. Paste it into OmniTranslate, translate it, then copy the result back here.'}catch(error){$('trProgress').textContent='Clipboard access failed. Copy the chapter manually from your novel, then paste it into OmniTranslate.'}if(tab)tab.opener=null;$('trOmniReturn').classList.remove('hidden');$('trStart').classList.add('hidden');$('trOmniApply').onclick=()=>{const result=$('trOmniText').value.trim();if(!result)return toast('Paste the translated chapter first');translated={bookId:state.book.id,chapter:state.chapter,originalText:original,text:result};translationMarkup(result);updateControls();closeModal();toast('OmniTranslate result applied')};return;}
+   const original=libraryState.book.chapters[readerState.chapter]?.text;
+   if(source?.type==='omni'){const tab=window.open('https://app.readomni.com/','_blank');try{await navigator.clipboard.writeText(original);$('trProgress').textContent='Chapter copied. Paste it into OmniTranslate, translate it, then copy the result back here.'}catch(error){$('trProgress').textContent='Clipboard access failed. Copy the chapter manually from your novel, then paste it into OmniTranslate.'}if(tab)tab.opener=null;$('trOmniReturn').classList.remove('hidden');$('trStart').classList.add('hidden');$('trOmniApply').onclick=()=>{const result=$('trOmniText').value.trim();if(!result)return toast('Paste the translated chapter first');translated={bookId:libraryState.book.id,chapter:readerState.chapter,originalText:original,text:result};translationMarkup(result);updateControls();closeModal();toast('OmniTranslate result applied')};return;}
    if(!source||!target||!original)return toast('Choose a source and target language');
    $('trStart').disabled=true;$('trProgress').textContent='Translating the complete chapter…';
    try{
@@ -132,7 +132,7 @@ export function openTranslatePage(){
     const safeText=original.replace(/\[IMAGE:[^\]]+\]/g,token=>{const marker='QRIMAGEPLACEHOLDER'+protectedTokens.length+'TOKEN';protectedTokens.push([marker,token]);return marker});
     let result=await translateWith(source,safeText,target);
     for(const [marker,token] of protectedTokens)result=result.replaceAll(marker,token);
-    translated={bookId:state.book.id,chapter:state.chapter,originalText:original,text:result};
+    translated={bookId:libraryState.book.id,chapter:readerState.chapter,originalText:original,text:result};
     translationMarkup(result);updateControls();closeModal();toast('Chapter translated');
    }catch(error){$('trProgress').textContent=error.message;$('trStart').disabled=false}
   };

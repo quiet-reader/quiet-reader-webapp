@@ -1,4 +1,4 @@
-import {state,freshBook} from './state.js';
+import {libraryState} from './state/library.js';import {freshBook} from './state.js';
 import {put} from './db.js';
 import {$,esc,toast,modal,closeModal,dataURL,uid} from './utils.js';
 import {refresh,openBook,setBookTab,drawBook} from './library.js';import {addEditEvent} from './history.js';import {confirmImagePreview} from './image-preview.js';
@@ -15,7 +15,7 @@ function ensureGallery(book){
  for(const image of book.gallery.images){if(!image.id)image.id=uid();if(!image.addedAt)image.addedAt=book.createdAt||book.updated||Date.now();if(!Array.isArray(image.history))image.history=[]}
  return book.gallery;
 }
-async function persist(book){book.updated=Date.now();await put(book);const index=state.books.findIndex(item=>item.id===book.id);if(index>=0)state.books[index]=book}
+async function persist(book){book.updated=Date.now();await put(book);const index=libraryState.books.findIndex(item=>item.id===book.id);if(index>=0)libraryState.books[index]=book}
 export function createGallery(){
  let selectedFiles=[];
  const body='<div class="stack"><label>Gallery title<input id="newGalleryTitle" placeholder="Gallery title"></label><label>Author / source (optional)<input id="newGalleryAuthor"></label><label>Tags (comma-separated)<input id="newGalleryTags" placeholder="art, reference, characters"></label><p class="muted tiny">Choose images or a folder. GIFs remain animated. You can also create an empty gallery and add images later.</p><div class="row wrap"><button type="button" id="selectGalleryImages">Choose images</button><button type="button" id="selectGalleryFolder">Choose folder</button><span id="gallerySelectionCount" class="tiny muted">No images selected</span></div><input id="newGalleryImageFiles" type="file" accept="image/*" multiple hidden><input id="newGalleryFolderFiles" type="file" accept="image/*" webkitdirectory directory multiple hidden><button id="createGalleryNow" class="primary">Create gallery</button></div>';
@@ -36,10 +36,10 @@ export function createGallery(){
   };
  });
 }
-export function addGalleryImages(){if(!can(state.book,'gallery.manage'))return toast('Unlock editing first');$('galleryImageFiles')?.click()}
-export function addGalleryFolder(){if(!can(state.book,'gallery.manage'))return toast('Unlock editing first');$('galleryFolderFiles')?.click()}
+export function addGalleryImages(){if(!can(libraryState.book,'gallery.manage'))return toast('Unlock editing first');$('galleryImageFiles')?.click()}
+export function addGalleryFolder(){if(!can(libraryState.book,'gallery.manage'))return toast('Unlock editing first');$('galleryFolderFiles')?.click()}
 export async function importGalleryFiles(fileList){
- const book=state.book;if(!can(book,'gallery.manage'))return toast('Unlock editing first');
+ const book=libraryState.book;if(!can(book,'gallery.manage'))return toast('Unlock editing first');
  const files=imageFiles(fileList||[]);if(!files.length)return toast('No supported images found');
  if(!(await confirmImagePreview(files,{title:'Preview gallery images',confirmLabel:'Add to gallery'})))return;
  const gallery=ensureGallery(book);let added=0;
@@ -54,7 +54,7 @@ async function copyImage(image){
  try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(image.data);toast('Image data URL copied · image clipboard unavailable')}else toast('Image clipboard is unavailable in this browser')}catch(error){toast('Could not copy image in this browser')}
 }
 async function openImage(index){
- const book=state.book,gallery=ensureGallery(book),image=gallery.images[index];if(!image)return;
+ const book=libraryState.book,gallery=ensureGallery(book),image=gallery.images[index];if(!image)return;
  // Browser fullscreen is best-effort; continue if the browser declines it.
  if(!document.fullscreenElement&&document.documentElement.requestFullscreen){try{const request=document.documentElement.requestFullscreen();request?.catch?.(()=>{})}catch(error){}}
  const now=Date.now();image.lastOpenedAt=now;gallery.lastOpenedAt=now;
@@ -63,7 +63,7 @@ async function openImage(index){
  sliderIndex=index;await persist(book);renderGallery();showImageViewer(index);
 }
 function showImageViewer(index){
- const book=state.book,gallery=ensureGallery(book),images=gallery.images;
+ const book=libraryState.book,gallery=ensureGallery(book),images=gallery.images;
  if(!images.length)return;
  sliderIndex=Math.max(0,Math.min(images.length-1,index));
  let viewerZoom=1,panX=0,panY=0,dragState=null;
@@ -147,13 +147,13 @@ function showImageViewer(index){
  });
 }
 function showGalleryHistory(){
- const history=[...(state.book?.gallery?.history||[])].slice(-10).reverse();
+ const history=[...(libraryState.book?.gallery?.history||[])].slice(-10).reverse();
  const body=history.length?'<div class="reading-history-list">'+history.map(item=>'<div class="reading-history-entry"><span class="reading-history-copy"><b>'+esc(item.imageName||'Image')+'</b><small>'+esc(dateTime(item.openedAt))+'</small></span><button type="button" class="gallery-history-open" data-open-gallery-history="'+esc(item.imageId||'')+'">Open</button></div>').join('')+'</div>':'<div class="empty">No gallery viewing history yet.</div>';
  modal('Gallery history · Last 10',body,()=>{
   document.querySelector('#modalHost .modal')?.classList.add('gallery-history-modal');
   $('modalHost').onclick=async event=>{
    const open=event.target.closest('[data-open-gallery-history]');if(!open)return;
-   const imageIndex=(state.book?.gallery?.images||[]).findIndex(image=>image.id===open.dataset.openGalleryHistory);
+   const imageIndex=(libraryState.book?.gallery?.images||[]).findIndex(image=>image.id===open.dataset.openGalleryHistory);
    if(imageIndex<0){toast('This image is no longer in the gallery');return}
    closeModal();await openImage(imageIndex);
   };
@@ -177,16 +177,16 @@ function renameImage(image,name){
  image.name=base+ext;return true;
 }
 export async function pasteGalleryImages(){
- const book=state.book;if(!can(book,'gallery.manage'))return toast('Unlock editing first');
+ const book=libraryState.book;if(!can(book,'gallery.manage'))return toast('Unlock editing first');
  if(!navigator.clipboard?.read)return toast('Clipboard image access is unavailable in this browser');
  try{const items=await navigator.clipboard.read();const files=[];for(const item of items){const type=item.types.find(value=>value.startsWith('image/'));if(type){const blob=await item.getType(type);files.push(new File([blob],'pasted-image-'+(files.length+1)+'.'+(type.split('/')[1]||'png'),{type}))}}
  if(!files.length)return toast('No image found in clipboard');
  await importGalleryFiles(files);
  }catch(error){toast('Could not read clipboard image. Check browser clipboard permission.')}
 }
-export async function continueGallery(book=state.book){
+export async function continueGallery(book=libraryState.book){
  if(!book||book.source!=='gallery')return;
- state.book=book;ensureGallery(book);
+ libraryState.book=book;ensureGallery(book);
  const history=[...(book.gallery.history||[])].reverse();
  let index=-1;
  for(const entry of history){index=book.gallery.images.findIndex(image=>image.id===entry.imageId);if(index>=0)break}
@@ -206,7 +206,7 @@ function bulkRenameImages(book,images){
  });
 }
 export function renderGallery(){
- const book=state.book,host=$('galleryContent');if(!host||!book)return;
+ const book=libraryState.book,host=$('galleryContent');if(!host||!book)return;
  const gallery=ensureGallery(book),images=gallery.images,view=['slider','compact'].includes(gallery.view)?gallery.view:'grid';
  const sizes=bookStorage(book);
  host.innerHTML='<div class="gallery-overview tiny muted">Gallery added '+esc(dateTime(gallery.createdAt))+' · Last opened '+esc(dateTime(gallery.lastOpenedAt))+'<br>Gallery images '+formatBytes(sizes.gallery)+' · Chapter images '+formatBytes(sizes.chapterImages)+' · Chapter text '+formatBytes(sizes.chapterText)+' · <b>Total '+formatBytes(sizes.total)+'</b></div><div class="gallery-toolbar"><div class="row wrap"><button type="button" data-gallery-view="grid" class="'+(view==='grid'?'active':'')+'">▦ Grid</button><button type="button" data-gallery-view="compact" class="'+(view==='compact'?'active':'')+'">☷ Compact</button><button type="button" data-gallery-view="slider" class="'+(view==='slider'?'active':'')+'">▣ Slideshow</button><span class="muted tiny">'+images.length+' images · '+formatBytes(sizes.gallery)+'</span><button type="button" data-gallery-history>◷ History</button><span class="grow"></span><button type="button" data-gallery-add '+(!can(book,'gallery.manage')?'disabled':'')+'>＋ Add images</button><button type="button" data-gallery-folder '+(!can(book,'gallery.manage')?'disabled':'')+'>＋ Add folder</button><button type="button" data-gallery-paste '+(!can(book,'gallery.manage')?'disabled':'')+'>Paste image</button></div></div><div class="gallery-lock-note">'+(!can(book,'gallery.manage')?'🔒 This gallery is locked. Unlock editing to change images or notes.':'Gallery unlocked · locked images cannot be renamed or reordered')+'</div>';

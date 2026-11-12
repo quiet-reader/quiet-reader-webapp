@@ -1,9 +1,9 @@
-import {state} from './state.js';
+import {libraryState} from './state/library.js';import {readerState} from './state/reader.js';
 import {put} from './db.js';
 import {$,esc,toast,modal} from './utils.js';
 import {openReader} from './reader.js';import {can} from './shared/policies.js';
 
-const books=()=>state.books||[];
+const books=()=>libraryState.books||[];
 const title=b=>b?.title||'Untitled novel';
 const chapterTitle=(b,i)=>b?.chapters?.[i]?.title||'Chapter '+(i+1);
 const save=async b=>{b.updated=Date.now();await put(b)};
@@ -49,7 +49,7 @@ function setupNovelPicker(prefix,excludeId,onSelect){
  });
  render();
 }
-export function manageNovelLinks(book=state.book){
+export function manageNovelLinks(book=libraryState.book){
  if(!book)return;
  if(!can(book,'novel-links.manage'))return toast('Unlock editing first');
  const links=Array.isArray(book.relationships)?book.relationships:[];
@@ -85,7 +85,7 @@ export function manageNovelLinks(book=state.book){
   };
  });
 }
-export function manageChapterLinks(book=state.book,index=state.chapter){
+export function manageChapterLinks(book=libraryState.book,index=readerState.chapter){
  if(!can(book,'chapter-links.manage'))return toast('Unlock editing first');
  const chapter=book?.chapters?.[index];if(!chapter)return;
  const existing=Array.isArray(chapter.links)?chapter.links:[];
@@ -119,7 +119,7 @@ export function manageChapterLinks(book=state.book,index=state.chapter){
 function chapterOptions(book,selected){return (book?.chapters||[]).map((chapter,index)=>'<option value="'+index+'" '+(index===Number(selected)?'selected':'')+'>'+esc(chapterTitle(book,index))+'</option>').join('')}
 export function renderReaderLinks(){
  const host=$('chapterLinkNav');if(!host)return;
- const chapter=state.book?.chapters?.[state.chapter],links=chapter?.links||[];
+ const chapter=libraryState.book?.chapters?.[readerState.chapter],links=chapter?.links||[];
  host.innerHTML=links.map(link=>{
   const target=books().find(item=>item.id===link.targetBookId),index=Number(link.targetChapterIndex);
   if(!target?.chapters?.[index])return '';
@@ -128,4 +128,4 @@ export function renderReaderLinks(){
  }).join('')+'<button type="button" class="chapter-link-manage" data-manage-current-chapter>＋ Manage links</button>';
  host.classList.toggle('hidden',false);
 }
-export function openLinkedChapter(bookId,index){const target=books().find(item=>item.id===bookId);if(!target)return toast('Linked novel is no longer in your library');state.book=target;openReader(Number(index))}
+export function openLinkedChapter(bookId,index){const target=books().find(item=>item.id===bookId);if(!target)return toast('Linked novel is no longer in your library');libraryState.book=target;openReader(Number(index))}

@@ -1,31 +1,31 @@
-import {state} from './state.js';import {put} from './db.js';import {$,esc,toast,modal} from './utils.js';import {openReader} from './reader.js';
+import {libraryState} from './state/library.js';import {readerState} from './state/reader.js';import {put} from './db.js';import {$,esc,toast,modal} from './utils.js';import {openReader} from './reader.js';
 function textOffset(root,target,offset){
  const range=document.createRange();
  try{range.selectNodeContents(root);range.setEnd(target,offset);return range.toString().length}catch{return 0}
 }
 export function hideSelectionToolbar(){const bar=$('selectionToolbar');if(bar)bar.classList.add('hidden')}
-export function positionSelectionToolbar(){const bar=$('selectionToolbar'),selection=getSelection(),root=$('readingBody');if(!bar||!selection||selection.isCollapsed||!selection.rangeCount||!root)return hideSelectionToolbar();const range=selection.getRangeAt(0);if(!root.contains(range.commonAncestorContainer)||!selection.toString().trim())return hideSelectionToolbar();const rect=range.getBoundingClientRect(),novelName=$('selectionNovelName');if(novelName)novelName.textContent=state.book?.title||'';bar.classList.remove('hidden');const width=bar.offsetWidth,height=bar.offsetHeight;let left=rect.left+rect.width/2;left=Math.max(width/2+10,Math.min(innerWidth-width/2-10,left));let top=rect.top-height-12;if(top<8)top=Math.min(innerHeight-height-8,rect.bottom+12);bar.style.left=left+'px';bar.style.top=Math.max(8,top)+'px'}
+export function positionSelectionToolbar(){const bar=$('selectionToolbar'),selection=getSelection(),root=$('readingBody');if(!bar||!selection||selection.isCollapsed||!selection.rangeCount||!root)return hideSelectionToolbar();const range=selection.getRangeAt(0);if(!root.contains(range.commonAncestorContainer)||!selection.toString().trim())return hideSelectionToolbar();const rect=range.getBoundingClientRect(),novelName=$('selectionNovelName');if(novelName)novelName.textContent=libraryState.book?.title||'';bar.classList.remove('hidden');const width=bar.offsetWidth,height=bar.offsetHeight;let left=rect.left+rect.width/2;left=Math.max(width/2+10,Math.min(innerWidth-width/2-10,left));let top=rect.top-height-12;if(top<8)top=Math.min(innerHeight-height-8,rect.bottom+12);bar.style.left=left+'px';bar.style.top=Math.max(8,top)+'px'}
 export async function addHighlight(color='yellow',savedRange=null){
- const selection=getSelection(),root=$('readingBody');if(!state.book||!root)return toast('Open a chapter first');
+ const selection=getSelection(),root=$('readingBody');if(!libraryState.book||!root)return toast('Open a chapter first');
  const range=savedRange?.cloneRange?.()||(selection&&!selection.isCollapsed&&selection.rangeCount?selection.getRangeAt(0).cloneRange():null);
  if(!range||!root.contains(range.startContainer)||!root.contains(range.endContainer))return toast('Select text inside the chapter');
  const raw=range.toString(),quote=raw.trim();if(!quote)return toast('Select some text first');
  const leading=raw.length-raw.trimStart().length,start=textOffset(root,range.startContainer,range.startOffset)+leading,end=start+quote.length;
- state.book.highlights=state.book.highlights||[];state.book.highlights.push({id:crypto.randomUUID?.()||String(Date.now())+Math.random(),chapter:state.chapter,text:quote,start,end,color,note:'',locked:false,created:Date.now()});
- try{await put(state.book);selection?.removeAllRanges();hideSelectionToolbar();renderHighlights();toast('Highlight saved')}catch(error){console.error(error);toast('Could not save highlight')}
+ libraryState.book.highlights=libraryState.book.highlights||[];libraryState.book.highlights.push({id:crypto.randomUUID?.()||String(Date.now())+Math.random(),chapter:readerState.chapter,text:quote,start,end,color,note:'',locked:false,created:Date.now()});
+ try{await put(libraryState.book);selection?.removeAllRanges();hideSelectionToolbar();renderHighlights();toast('Highlight saved')}catch(error){console.error(error);toast('Could not save highlight')}
 }
 export async function addParagraphHighlight(paragraph,color='yellow'){
- const root=$('readingBody');if(!state.book||!root)return toast('Open a chapter first');
+ const root=$('readingBody');if(!libraryState.book||!root)return toast('Open a chapter first');
  if(!paragraph||!root.contains(paragraph)||!paragraph.matches('p,li,blockquote,h1,h2,h3,h4,h5,h6,pre'))return toast('Tap inside a paragraph first');
  const range=document.createRange();range.selectNodeContents(paragraph);const raw=range.toString(),quote=raw.trim();if(!quote)return toast('This paragraph has no text to highlight');
  const leading=raw.length-raw.trimStart().length,start=textOffset(root,range.startContainer,range.startOffset)+leading,end=start+quote.length;
- state.book.highlights=state.book.highlights||[];state.book.highlights.push({id:crypto.randomUUID?.()||String(Date.now())+Math.random(),chapter:state.chapter,text:quote,start,end,color,note:'',locked:false,created:Date.now(),scope:'paragraph'});
- try{await put(state.book);hideSelectionToolbar();getSelection()?.removeAllRanges();renderHighlights();toast('Paragraph highlighted')}catch(error){console.error(error);toast('Could not save paragraph highlight')}
+ libraryState.book.highlights=libraryState.book.highlights||[];libraryState.book.highlights.push({id:crypto.randomUUID?.()||String(Date.now())+Math.random(),chapter:readerState.chapter,text:quote,start,end,color,note:'',locked:false,created:Date.now(),scope:'paragraph'});
+ try{await put(libraryState.book);hideSelectionToolbar();getSelection()?.removeAllRanges();renderHighlights();toast('Paragraph highlighted')}catch(error){console.error(error);toast('Could not save paragraph highlight')}
 }
 export function renderHighlights(){
- const root=$('readingBody');if(!root||!state.book)return;
+ const root=$('readingBody');if(!root||!libraryState.book)return;
  root.querySelectorAll('mark[data-highlight]').forEach(mark=>{const parent=mark.parentNode;if(!parent)return;while(mark.firstChild)parent.insertBefore(mark.firstChild,mark);mark.remove()});root.normalize();
- const saved=(state.book.highlights||[]).filter(m=>Number(m.chapter)===Number(state.chapter)&&m.text);if(!saved.length)return;
+ const saved=(libraryState.book.highlights||[]).filter(m=>Number(m.chapter)===Number(readerState.chapter)&&m.text);if(!saved.length)return;
  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];let total=0,node;
  while((node=walker.nextNode())){const start=total;total+=node.nodeValue.length;nodes.push({node,start,end:total})}
  const fullText=nodes.map(x=>x.node.nodeValue).join('');
@@ -43,7 +43,7 @@ export function renderHighlights(){
 async function removeMark(book,kind,id){const mark=(book[kind]||[]).find(x=>x.id===id);if(mark?.locked)return toast('Unlock this saved item before deleting it');book[kind]=(book[kind]||[]).filter(x=>x.id!==id);await put(book);showMarks()}
 async function toggleMarkLock(book,kind,id){const mark=(book[kind]||[]).find(x=>x.id===id);if(!mark)return;mark.locked=!mark.locked;await put(book);showMarks();toast(mark.locked?'Saved item locked':'Saved item unlocked')}
 export function showMarks(){
- const books=state.books?.length?state.books:(state.book?[state.book]:[]);
+ const books=libraryState.books?.length?libraryState.books:(libraryState.book?[libraryState.book]:[]);
  const allEntries=books.flatMap(book=>[...(book.bookmarks||[]).map(x=>({...x,type:'Bookmark',kind:'bookmarks',bookId:book.id,bookTitle:book.title,bookAuthor:book.author})),...(book.highlights||[]).map(x=>({...x,type:'Highlight',kind:'highlights',bookId:book.id,bookTitle:book.title,bookAuthor:book.author}))]).sort((a,b)=>(b.created||0)-(a.created||0));
  let activeTab='highlights';let searchQuery='';
  const renderEntries=()=>{
@@ -59,12 +59,12 @@ export function showMarks(){
   $('savedMarksSearch').oninput=e=>{searchQuery=e.target.value;renderEntries()};
   $('modalHost').onclick=async e=>{
    const tab=e.target.closest('[data-mark-tab]');if(tab){activeTab=tab.dataset.markTab;renderEntries();return}
-   const go=e.target.closest('[data-goto]');if(go){const book=state.books.find(x=>x.id===go.dataset.bookId)||books.find(x=>x.id===go.dataset.bookId);if(!book)return;state.book=book;$('modalHost').innerHTML='';openReader(Number(go.dataset.goto));if(go.dataset.kind==='highlights'){requestAnimationFrame(()=>{const mark=$('readingBody')?.querySelector('mark[data-highlight="'+go.dataset.markId+'"]');mark?.scrollIntoView({behavior:'smooth',block:'center'})})}else{const anchor=Number(go.dataset.anchorOffset);if(Number.isFinite(anchor)&&anchor>0)requestAnimationFrame(()=>window.scrollTo({top:Math.max(0,anchor-innerHeight/2),behavior:'smooth'}))}return}
-   const lock=e.target.closest('[data-toggle-mark-lock]');if(lock){const book=state.books.find(x=>x.id===lock.dataset.bookId)||books.find(x=>x.id===lock.dataset.bookId);if(book)await toggleMarkLock(book,lock.dataset.kind,lock.dataset.toggleMarkLock);return}
-   const del=e.target.closest('[data-remove-mark]');if(del){const book=state.books.find(x=>x.id===del.dataset.bookId)||books.find(x=>x.id===del.dataset.bookId);if(book)await removeMark(book,del.dataset.kind,del.dataset.removeMark)}
+   const go=e.target.closest('[data-goto]');if(go){const book=libraryState.books.find(x=>x.id===go.dataset.bookId)||books.find(x=>x.id===go.dataset.bookId);if(!book)return;libraryState.book=book;$('modalHost').innerHTML='';openReader(Number(go.dataset.goto));if(go.dataset.kind==='highlights'){requestAnimationFrame(()=>{const mark=$('readingBody')?.querySelector('mark[data-highlight="'+go.dataset.markId+'"]');mark?.scrollIntoView({behavior:'smooth',block:'center'})})}else{const anchor=Number(go.dataset.anchorOffset);if(Number.isFinite(anchor)&&anchor>0)requestAnimationFrame(()=>window.scrollTo({top:Math.max(0,anchor-innerHeight/2),behavior:'smooth'}))}return}
+   const lock=e.target.closest('[data-toggle-mark-lock]');if(lock){const book=libraryState.books.find(x=>x.id===lock.dataset.bookId)||books.find(x=>x.id===lock.dataset.bookId);if(book)await toggleMarkLock(book,lock.dataset.kind,lock.dataset.toggleMarkLock);return}
+   const del=e.target.closest('[data-remove-mark]');if(del){const book=libraryState.books.find(x=>x.id===del.dataset.bookId)||books.find(x=>x.id===del.dataset.bookId);if(book)await removeMark(book,del.dataset.kind,del.dataset.removeMark)}
   };
-  $('modalHost').onchange=async e=>{const id=e.target.dataset.note;if(!id)return;const book=state.books.find(x=>x.id===e.target.dataset.bookId)||books.find(x=>x.id===e.target.dataset.bookId);const mark=book?.highlights?.find(x=>x.id===id);if(mark){mark.note=e.target.value;await put(book)}};
+  $('modalHost').onchange=async e=>{const id=e.target.dataset.note;if(!id)return;const book=libraryState.books.find(x=>x.id===e.target.dataset.bookId)||books.find(x=>x.id===e.target.dataset.bookId);const mark=book?.highlights?.find(x=>x.id===id);if(mark){mark.note=e.target.value;await put(book)}};
  });
 }
-export async function bookmarkFromSelection(){const book=state.book;if(!book)return toast('Open a novel first');book.bookmarks=book.bookmarks||[];if(book.bookmarks.some(x=>Number(x.chapter)===Number(state.chapter)))return toast('This chapter is already bookmarked');const selection=getSelection(),range=selection&&!selection.isCollapsed&&selection.rangeCount?selection.getRangeAt(0):null,rect=range?.getBoundingClientRect(),anchorOffset=rect&&rect.height?window.scrollY+rect.top+rect.height/2:window.scrollY+window.innerHeight/2;book.bookmarks.push({id:crypto.randomUUID?.()||String(Date.now()),chapter:state.chapter,offset:window.scrollY,anchorOffset,text:range?.toString().trim()||$('readingTitle')?.textContent||'Chapter '+(state.chapter+1),created:Date.now(),locked:false});await put(book);hideSelectionToolbar();getSelection()?.removeAllRanges();toast('Bookmark saved')}
+export async function bookmarkFromSelection(){const book=libraryState.book;if(!book)return toast('Open a novel first');book.bookmarks=book.bookmarks||[];if(book.bookmarks.some(x=>Number(x.chapter)===Number(readerState.chapter)))return toast('This chapter is already bookmarked');const selection=getSelection(),range=selection&&!selection.isCollapsed&&selection.rangeCount?selection.getRangeAt(0):null,rect=range?.getBoundingClientRect(),anchorOffset=rect&&rect.height?window.scrollY+rect.top+rect.height/2:window.scrollY+window.innerHeight/2;book.bookmarks.push({id:crypto.randomUUID?.()||String(Date.now()),chapter:readerState.chapter,offset:window.scrollY,anchorOffset,text:range?.toString().trim()||$('readingTitle')?.textContent||'Chapter '+(readerState.chapter+1),created:Date.now(),locked:false});await put(book);hideSelectionToolbar();getSelection()?.removeAllRanges();toast('Bookmark saved')}
 export function afterReaderRender(){renderHighlights()}

@@ -1,5 +1,5 @@
 import {put} from './db.js';
-import {state} from './state.js';
+import {libraryState} from './state/library.js';
 import {$,esc,modal,closeModal} from './utils.js';
 
 const UNIVERSAL_HISTORY_KEY='qrUniversalHistoryV1';
@@ -9,7 +9,7 @@ function readUniversalHistory(){try{const raw=localStorage.getItem(UNIVERSAL_HIS
 function writeUniversalHistory(entries){try{localStorage.setItem(UNIVERSAL_HISTORY_KEY,JSON.stringify(entries));return true}catch(error){console.warn('Could not save universal history',error);return false}}
 function appendUniversalHistory(entry){
  let entries=readUniversalHistory();
- if(entries===null)entries=(state.books||[]).flatMap(book=>[
+ if(entries===null)entries=(libraryState.books||[]).flatMap(book=>[
   ...(book.readingHistory||[]).map(item=>({...item,kind:'reading',bookId:book.id,bookTitle:book.title||'Untitled novel'})),
   ...(book.editHistory||[]).map(item=>({...item,kind:'edit',bookId:book.id,bookTitle:book.title||'Untitled novel'}))
  ]);
@@ -51,7 +51,7 @@ export async function recordReading(book,chapterIndex,offset=0){
   appendUniversalHistory({...event,kind:'reading',bookId:book.id,bookTitle:book.title||'Untitled novel'});
  }
  book.readingHistory=history.slice(-10);await put(book);
- const bookIndex=state.books?.findIndex(item=>item.id===book.id);if(bookIndex>=0)state.books[bookIndex]=book;
+ const bookIndex=libraryState.books?.findIndex(item=>item.id===book.id);if(bookIndex>=0)libraryState.books[bookIndex]=book;
 }
 export function novelHistoryMarkup(book){
  const reads=[...(book?.readingHistory||[])].slice(-10).reverse();

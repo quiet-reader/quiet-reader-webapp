@@ -1,5 +1,7 @@
-import {state} from './state.js';import {put} from './db.js';import {$,esc,toast,paragraphs} from './utils.js';import {setScreen} from './state.js';import {renderHighlights} from './highlights.js';import {recordReading} from './history.js';
+import {libraryState} from './state/library.js';import {readerState} from './state/reader.js';import {put} from './db.js';import {$,esc,toast,paragraphs} from './utils.js';import {setScreen} from './state.js';import {recordReading} from './history.js';
 import {loadKokoro,generateKokoro,playKokoroAudio,pauseKokoro,resumeKokoro,stopKokoro,DEFAULT_KOKORO_VOICE} from './kokoro.js';
+let highlightRenderer = () => {};
+export function setHighlightRenderer(renderer){ highlightRenderer = typeof renderer === 'function' ? renderer : () => {}; }
 export function chapterHTML(ch){
  const images=new Map((ch.images||[]).map(im=>[im.id,im]));
  return paragraphs(ch.text).map((paragraph,paragraphIndex)=>{
@@ -11,19 +13,19 @@ export function chapterHTML(ch){
   return /^\[IMAGE:[^\]]+\]$/.test(paragraph)?parts:'<p data-paragraph-index="'+paragraphIndex+'">'+parts+'</p>';
  }).join('');
 }
-export function openReader(index){stopAutoRead(false);novelSearchBookId=null;const b=state.book;if(!b?.chapters?.length){toast('Add a chapter first');return}state.chapter=Math.max(0,Math.min(index,b.chapters.length-1));drawReader();setScreen('reader');const saved=b.progress?.chapter===state.chapter?b.progress.offset:0;window.scrollTo(0,saved||0);void recordReading(b,state.chapter,saved||0)}
-export function drawReader(){const b=state.book,c=b.chapters[state.chapter];if(!c)return;$('readerBookTitle').textContent=b.title;$('chapterKicker').textContent='Chapter '+(state.chapter+1)+' of '+b.chapters.length;$('readingTitle').textContent=c.title||'Chapter '+(state.chapter+1);$('topPrevChapter').disabled=state.chapter===0;$('topNextChapter').disabled=state.chapter===b.chapters.length-1;$('chapterCharacterCount').textContent=(c.text||'').length.toLocaleString()+' characters';$('readingBody').innerHTML=chapterHTML(c);renderChapterFormat(chapterFormat);$('jumpChapter').innerHTML=b.chapters.map((x,i)=>'<option value="'+i+'">'+esc(x.title||'Chapter '+(i+1))+'</option>').join('');$('jumpChapter').value=state.chapter;$('prevChapter').disabled=state.chapter===0;$('nextChapter').disabled=state.chapter===b.chapters.length-1;$('chapterCounter').textContent=(state.chapter+1)+' / '+b.chapters.length;updateBookmarkButton();renderHighlights()}
-export async function saveProgress(){if(!state.book)return;state.book.progress={chapter:state.chapter,offset:window.scrollY};state.book.updated=Date.now();await put(state.book)}
-export async function changeChapter(delta){stopAutoRead();await saveProgress();const next=state.chapter+delta;if(next<0||next>=state.book.chapters.length)return;state.chapter=next;drawReader();window.scrollTo(0,0);void recordReading(state.book,state.chapter,0)}
-export async function jumpChapter(index){stopAutoRead();await saveProgress();state.chapter=Number(index);drawReader();window.scrollTo(0,0);void recordReading(state.book,state.chapter,0)}
+export function openReader(index){stopAutoRead(false);novelSearchBookId=null;const b=libraryState.book;if(!b?.chapters?.length){toast('Add a chapter first');return}readerState.chapter=Math.max(0,Math.min(index,b.chapters.length-1));drawReader();setScreen('reader');const saved=b.progress?.chapter===readerState.chapter?b.progress.offset:0;window.scrollTo(0,saved||0);void recordReading(b,readerState.chapter,saved||0)}
+export function drawReader(){const b=libraryState.book,c=b.chapters[readerState.chapter];if(!c)return;$('readerBookTitle').textContent=b.title;$('chapterKicker').textContent='Chapter '+(readerState.chapter+1)+' of '+b.chapters.length;$('readingTitle').textContent=c.title||'Chapter '+(readerState.chapter+1);$('topPrevChapter').disabled=readerState.chapter===0;$('topNextChapter').disabled=readerState.chapter===b.chapters.length-1;$('chapterCharacterCount').textContent=(c.text||'').length.toLocaleString()+' characters';$('readingBody').innerHTML=chapterHTML(c);renderChapterFormat(chapterFormat);$('jumpChapter').innerHTML=b.chapters.map((x,i)=>'<option value="'+i+'">'+esc(x.title||'Chapter '+(i+1))+'</option>').join('');$('jumpChapter').value=readerState.chapter;$('prevChapter').disabled=readerState.chapter===0;$('nextChapter').disabled=readerState.chapter===b.chapters.length-1;$('chapterCounter').textContent=(readerState.chapter+1)+' / '+b.chapters.length;updateBookmarkButton();highlightRenderer()}
+export async function saveProgress(){if(!libraryState.book)return;libraryState.book.progress={chapter:readerState.chapter,offset:window.scrollY};libraryState.book.updated=Date.now();await put(libraryState.book)}
+export async function changeChapter(delta){stopAutoRead();await saveProgress();const next=readerState.chapter+delta;if(next<0||next>=libraryState.book.chapters.length)return;readerState.chapter=next;drawReader();window.scrollTo(0,0);void recordReading(libraryState.book,readerState.chapter,0)}
+export async function jumpChapter(index){stopAutoRead();await saveProgress();readerState.chapter=Number(index);drawReader();window.scrollTo(0,0);void recordReading(libraryState.book,readerState.chapter,0)}
 let novelSearchBookId=null;
 let novelSearchIndex=[];
 let novelSearchMatches=[];
 let novelSearchQuery='';
 let novelSearchShown=80;
 function buildNovelSearchIndex(){
- novelSearchBookId=state.book?.id||null;
- novelSearchIndex=(state.book?.chapters||[]).map((chapter,chapterIndex)=>({
+ novelSearchBookId=libraryState.book?.id||null;
+ novelSearchIndex=(libraryState.book?.chapters||[]).map((chapter,chapterIndex)=>({
   chapterIndex,
   title:String(chapter.title||'Chapter '+(chapterIndex+1)),
   titleLower:String(chapter.title||'Chapter '+(chapterIndex+1)).toLocaleLowerCase(),
@@ -54,7 +56,7 @@ export function searchNovel(query){
  if(!input||!results)return;
  const term=String(query??input.value).trim();
  if(!term){novelSearchMatches=[];novelSearchQuery='';results.innerHTML='<p class="tiny muted">Search across every chapter in this novel.</p>';return}
- if(novelSearchBookId!==state.book?.id)buildNovelSearchIndex();
+ if(novelSearchBookId!==libraryState.book?.id)buildNovelSearchIndex();
  const needle=term.toLocaleLowerCase();
  novelSearchMatches=[];novelSearchQuery=term;novelSearchShown=80;
  for(const chapter of novelSearchIndex){
@@ -96,8 +98,8 @@ export async function openNovelSearchResult(chapterIndex,paragraphIndex,offset,q
  if(!highlightSearchMatch(paragraph,Number(offset),String(query||'')))toast('Could not locate that exact match in the chapter');
 }
 
-function updateBookmarkButton(){const button=$('bookmarkBtn');if(!button)return;const saved=(state.book?.bookmarks||[]).some(mark=>mark.chapter===state.chapter);button.classList.toggle('is-bookmarked',saved);button.textContent=saved?'★':'☆';button.setAttribute('aria-pressed',String(saved));button.title=saved?'Remove bookmark from this chapter':'Bookmark this chapter';button.setAttribute('aria-label',button.title)}
-export async function addBookmark(){const b=state.book;if(!b)return;b.bookmarks=b.bookmarks||[];const existing=b.bookmarks.some(mark=>mark.chapter===state.chapter);if(existing){b.bookmarks=b.bookmarks.filter(mark=>mark.chapter!==state.chapter);toast('Bookmark removed')}else{const anchorOffset=window.scrollY+window.innerHeight/2;b.bookmarks.push({id:crypto.randomUUID?.()||String(Date.now()),chapter:state.chapter,offset:window.scrollY,anchorOffset,text:$('readingTitle').textContent,created:Date.now()});toast('Bookmark saved')}await put(b);updateBookmarkButton()}
+function updateBookmarkButton(){const button=$('bookmarkBtn');if(!button)return;const saved=(libraryState.book?.bookmarks||[]).some(mark=>mark.chapter===readerState.chapter);button.classList.toggle('is-bookmarked',saved);button.textContent=saved?'★':'☆';button.setAttribute('aria-pressed',String(saved));button.title=saved?'Remove bookmark from this chapter':'Bookmark this chapter';button.setAttribute('aria-label',button.title)}
+export async function addBookmark(){const b=libraryState.book;if(!b)return;b.bookmarks=b.bookmarks||[];const existing=b.bookmarks.some(mark=>mark.chapter===readerState.chapter);if(existing){b.bookmarks=b.bookmarks.filter(mark=>mark.chapter!==readerState.chapter);toast('Bookmark removed')}else{const anchorOffset=window.scrollY+window.innerHeight/2;b.bookmarks.push({id:crypto.randomUUID?.()||String(Date.now()),chapter:readerState.chapter,offset:window.scrollY,anchorOffset,text:$('readingTitle').textContent,created:Date.now()});toast('Bookmark saved')}await put(b);updateBookmarkButton()}
 let chapterFormat='normal';
 let sectionParts=[];
 function isEnglish(text){
@@ -130,7 +132,7 @@ export function renderChapterFormat(mode=chapterFormat){
  chapterFormat=mode;
  const controls=$('chapterFormatControls'),view=$('sectionView');
  if(!controls||!view)return;
- const chapter=state.book?.chapters?.[state.chapter];
+ const chapter=libraryState.book?.chapters?.[readerState.chapter];
  const hasText=Boolean(chapter?.text?.trim());
  controls.classList.toggle('hidden',!hasText);
  view.classList.add('hidden');view.innerHTML='';
@@ -142,7 +144,7 @@ export function renderChapterFormat(mode=chapterFormat){
  view.innerHTML=sectionParts.map((part,i)=>'<section class="reading-section"><div class="section-heading-row"><b>Section '+(i+1)+' <span class="muted tiny">· '+part.length.toLocaleString()+' characters</span></b><div class="row"><button type="button" data-copy-section="'+i+'">Copy section</button><button type="button" data-toggle-section="'+i+'">Expand</button></div></div><div class="section-content hidden"><p>'+esc(part).replace(/\n/g,'<br>')+'</p></div></section>').join('');
  view.classList.remove('hidden');
 }
-export async function copyChapter(){const text=state.book?.chapters?.[state.chapter]?.text;if(text==null)return toast('Chapter not found');try{await navigator.clipboard.writeText(text);toast('Entire chapter copied')}catch{const ta=document.createElement('textarea');ta.value=text;document.body.append(ta);ta.select();const ok=document.execCommand('copy');ta.remove();toast(ok?'Entire chapter copied':'Could not copy chapter')}}
+export async function copyChapter(){const text=libraryState.book?.chapters?.[readerState.chapter]?.text;if(text==null)return toast('Chapter not found');try{await navigator.clipboard.writeText(text);toast('Entire chapter copied')}catch{const ta=document.createElement('textarea');ta.value=text;document.body.append(ta);ta.select();const ok=document.execCommand('copy');ta.remove();toast(ok?'Entire chapter copied':'Could not copy chapter')}}
 export async function copySection(index){
  const text=sectionParts[Number(index)];
  if(text==null)return toast('Section not found');
@@ -174,10 +176,10 @@ let kokoroSentenceUnits=[];
 let kokoroSentenceIndex=0;
 let autoReadCharOffset=0;
 let autoReadCursorChapter=-1;
-function cursorKey(){return 'qrAutoReadCursor:'+String(state.book?.id||'')}
-function saveAutoReadCursor(){if(!state.book)return;const cursor={chapter:state.chapter,paragraph:autoReadIndex,char:autoReadCharOffset};try{localStorage.setItem(cursorKey(),JSON.stringify(cursor))}catch{}}
-function loadAutoReadCursor(){try{const value=JSON.parse(localStorage.getItem(cursorKey())||'null');if(value&&value.chapter===state.chapter){autoReadIndex=Math.max(0,Number(value.paragraph)||0);autoReadCharOffset=Math.max(0,Number(value.char)||0)}else{autoReadIndex=0;autoReadCharOffset=0}}catch{autoReadIndex=0;autoReadCharOffset=0}}
-export function setAutoReadPosition(paragraphIndex){if(!state.book)return false;const wasRunning=autoReadRunning;const nodes=autoReadNodes();autoReadIndex=Math.max(0,Math.min(nodes.length-1,Number(paragraphIndex)||0));autoReadCharOffset=0;kokoroSentenceIndex=0;kokoroSentenceUnits=[];saveAutoReadCursor();if(autoReadRunning){cancelSpeech();autoReadRunning=true;autoReadPaused=false;if($('ttsEnabled')?.checked&&$('ttsEngine')?.value==='kokoro')rebuildKokoroSentenceUnits();scheduleAutoRead()}else{highlightAutoReadParagraph();toast('Auto-read will start from this paragraph')}return wasRunning}
+function cursorKey(){return 'qrAutoReadCursor:'+String(libraryState.book?.id||'')}
+function saveAutoReadCursor(){if(!libraryState.book)return;const cursor={chapter:readerState.chapter,paragraph:autoReadIndex,char:autoReadCharOffset};try{localStorage.setItem(cursorKey(),JSON.stringify(cursor))}catch{}}
+function loadAutoReadCursor(){try{const value=JSON.parse(localStorage.getItem(cursorKey())||'null');if(value&&value.chapter===readerState.chapter){autoReadIndex=Math.max(0,Number(value.paragraph)||0);autoReadCharOffset=Math.max(0,Number(value.char)||0)}else{autoReadIndex=0;autoReadCharOffset=0}}catch{autoReadIndex=0;autoReadCharOffset=0}}
+export function setAutoReadPosition(paragraphIndex){if(!libraryState.book)return false;const wasRunning=autoReadRunning;const nodes=autoReadNodes();autoReadIndex=Math.max(0,Math.min(nodes.length-1,Number(paragraphIndex)||0));autoReadCharOffset=0;kokoroSentenceIndex=0;kokoroSentenceUnits=[];saveAutoReadCursor();if(autoReadRunning){cancelSpeech();autoReadRunning=true;autoReadPaused=false;if($('ttsEnabled')?.checked&&$('ttsEngine')?.value==='kokoro')rebuildKokoroSentenceUnits();scheduleAutoRead()}else{highlightAutoReadParagraph();toast('Auto-read will start from this paragraph')}return wasRunning}
 function splitSpeechSentences(text){
  const source=String(text||'').trim();
  if(!source)return [];
@@ -352,11 +354,11 @@ function speakCurrentKokoroSentence(){
 }
 async function finishKokoroChapter(){
  if(!autoReadRunning||autoReadPaused)return;
- if(state.chapter<state.book.chapters.length-1){
+ if(readerState.chapter<libraryState.book.chapters.length-1){
   await saveProgress();
   if(!autoReadRunning||autoReadPaused)return;
-  state.chapter++;
-  void recordReading(state.book,state.chapter,0);
+  readerState.chapter++;
+  void recordReading(libraryState.book,readerState.chapter,0);
   drawReader();
   window.scrollTo({top:0,behavior:'auto'});
   rebuildKokoroSentenceUnits();
@@ -389,10 +391,10 @@ async function advanceAutoRead(){
  autoReadIndex++;autoReadCharOffset=0;saveAutoReadCursor();trimKokoroQueue();fillKokoroQueue();
  const nodes=autoReadNodes();
  if(autoReadIndex>=nodes.length){
-  if(state.chapter<state.book.chapters.length-1){
+  if(readerState.chapter<libraryState.book.chapters.length-1){
    await saveProgress();
-   state.chapter++;
-   void recordReading(state.book,state.chapter,0);
+   readerState.chapter++;
+   void recordReading(libraryState.book,readerState.chapter,0);
    autoReadIndex=0;autoReadCharOffset=0;kokoroSentenceIndex=0;
    drawReader();
    window.scrollTo({top:0,behavior:'auto'});
@@ -405,7 +407,7 @@ async function advanceAutoRead(){
  scheduleAutoRead();
 }
 export async function startAutoRead(){
- if(!state.book?.chapters?.length)return;
+ if(!libraryState.book?.chapters?.length)return;
  if($('ttsEnabled')?.checked&&$('ttsEngine')?.value==='kokoro'){
   try{await loadKokoro(message=>setTTSStatus(message));populateKokoroVoices();}
   catch(error){setTTSStatus('Kokoro load failed · '+(error?.message||'check connection'));toast('Could not load Kokoro. Check your connection and try again.');return}
