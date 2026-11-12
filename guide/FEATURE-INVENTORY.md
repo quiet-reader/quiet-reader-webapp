@@ -34,7 +34,7 @@ This inventory was checked against the branch's root README, `index.html`, `js/`
 | `reader.js` | Reader rendering/navigation, chapter search, progress, bookmarks, chapter format, auto-read and TTS controls. |
 | `editor.js` | Chapter editing, saving/deleting, image insertion, TXT import and image paste entry points. |
 | `image-preview.js` | Preview and confirmation before inserting/pasting image files into supported destinations. |
-| `chapter-tools.js` | Batch chapter renaming with regex and preview. |
+| `chapter-tools.js` | Batch chapter renaming with searchable in-modal chapter selection, select-all/clear, selectable chapter order, regex and preview. |
 | `galleries.js` | Gallery lifecycle, image management, fullscreen viewer, image metadata/history and gallery translation entry point. |
 | `history.js` | Reading/editing event recording and universal history rendering/search/clear/lock behaviour. |
 | `highlights.js` | Text/paragraph highlights, selection toolbar, bookmarks and marks management. |
@@ -91,7 +91,7 @@ Recent commits on the baseline branch include:
 
 Do not drop or simplify these recent features during architecture work. Treat them as first-class regression requirements.
 
-## Feature change log template
+### V2 feature update — 12 Nov 2026\n\n- Feature/capability: Removed per-row rename checkboxes from the chapter index; chapter selection now lives in the rename dialog with title search, individual selection, select-all/clear, and forward/reverse numbering order. Novel and chapter link editing controls are disabled while the current novel is locked, with guards in the link-management entry points.\n- Owning modules: `chapter-tools.js`, `library.js`, `links.js`, and `app.js`; styles in `css/main.css`.\n- Persisted data or backup impact: None; rename operations retain the existing chapter history behaviour and do not change record structure.\n- Compatibility/migration impact: None.\n- Tests run and outcome: Static source inspection only.\n- Known limitations / not tested: Browser interaction, keyboard/screen-reader behaviour, lock/unlock regression, chapter-link mutation across paired novels, and offline cache update not runtime-tested.\n\n## Feature change log template
 
 Append a short entry whenever a feature is added, changed, moved, or removed:
 
