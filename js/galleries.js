@@ -205,6 +205,8 @@ function bulkRenameImages(book,images){
   $('applyGalleryBulkRename').onclick=async()=>{const prefix=$('galleryRenamePrefix').value.trim()||'Image_',start=Math.max(0,Number($('galleryRenameStart').value)||0),digits=Math.max(1,Math.min(8,Number($('galleryRenameDigits').value)||1));let number=0;for(const image of selected){const dot=image.name.lastIndexOf('.'),ext=dot>0?image.name.slice(dot):'';image.name=prefix+String(start+number++).padStart(digits,'0')+ext}addEditEvent(book,'Images bulk renamed',selected.length+' images');await persist(book);selectedImageIds.clear();closeModal();renderGallery();drawBook();toast(selected.length+' images renamed')};
  });
 }
+export async function openGalleryImage(index){await openImage(Number(index))}
+
 export function renderGallery(){
  const book=libraryState.book,host=$('galleryContent');if(!host||!book)return;
  const gallery=ensureGallery(book),images=gallery.images,view=['slider','compact'].includes(gallery.view)?gallery.view:'grid';
