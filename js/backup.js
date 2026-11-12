@@ -1,6 +1,6 @@
 import {itemRepository as itemStore} from './infrastructure/persistence/item-repository.js';
 import {applyTheme} from './themes.js';
-import {$,download,toast,modal,closeModal} from './utils.js';
+import {$,esc,download,toast,modal,closeModal} from './utils.js';
 
 const ARCHIVE_FORMAT='QuietReaderArchive';
 const ARCHIVE_VERSION=1;
@@ -218,14 +218,14 @@ async function readZipArchive(file){
  const restored=[];
  for(const ref of library.books){const item=await readItem(ref);if(item.kind!=='book'||item.id!==ref.id)throw new Error('A book entry does not match its library index.');restored.push(await hydrate(item))}
  for(const ref of library.pastes){const item=await readItem(ref);if(item.kind!=='paste'||item.id!==ref.id)throw new Error('A paste entry does not match its library index.');restored.push(item)}
- return {items:restored,theme:library.theme,preferences:library.preferences,metadata:manifest.origin||null,fingerprint:manifest.fingerprint||null,backupHistory:Array.isArray(manifest.backupHistory)?manifest.backupHistory:[],createdAt:manifest.createdAt||null};
+ return {items:restored,theme:library.theme,preferences:library.preferences,metadata:manifest.origin||null,fingerprint:manifest.fingerprint||null,backupHistory:Array.isArray(manifest.backupHistory)?manifest.backupHistory:[],createdAt:manifest.createdAt||null,collections:Array.isArray(manifest.collections)?manifest.collections:[]};
 }
 function parseLegacyBackup(data){
  if(data.format!==LEGACY_FORMAT)throw new Error('This is not a supported Quiet Reader backup.');
  if(![2,3].includes(Number(data.version)))throw new Error('Unsupported legacy JSON backup version.');
  const items=data.items||[...(data.books||[]),...(data.pastes||[])];
  if(!Array.isArray(items))throw new Error('The JSON backup does not contain a valid item list.');
- return {items,theme:data.theme,preferences:data.preferences,metadata:null,fingerprint:null,backupHistory:[],createdAt:null};
+ return {items,theme:data.theme,preferences:data.preferences,metadata:null,fingerprint:null,backupHistory:[],createdAt:null,collections:Array.isArray(data.collections)?data.collections:[]};
 }
 function applyPreferences(data){
  if(data.theme)applyTheme(data.theme);
