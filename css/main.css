@@ -740,3 +740,5 @@ select:focus{animation:select-focus-in .2s ease both}
 .book-card-quick-actions button[data-pin-item]{font-size:0;filter:grayscale(1);opacity:.5;background:#15151555}
 .book-card-quick-actions button[data-pin-item]::first-letter{font-size:19px}
 .book-card-quick-actions button[data-pin-item].active{filter:none;opacity:1;background:#f0c84b33;border-color:#f0c84b;color:#f0c84b}
+
+.book-card-quick-actions button[data-pin-item]{font-size:19px!important;filter:grayscale(1);opacity:.48}.book-card-quick-actions button[data-pin-item].active{filter:none;opacity:1}.book-card-quick-actions button[data-pin-item]::first-letter{font-size:inherit}
