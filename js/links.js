@@ -51,6 +51,7 @@ function setupNovelPicker(prefix,excludeId,onSelect){
 }
 export function manageNovelLinks(book=state.book){
  if(!book)return;
+ if(book.locked)return toast('Unlock editing first');
  const links=Array.isArray(book.relationships)?book.relationships:[];
  const rows=links.map((link,index)=>{const target=books().find(item=>item.id===link.targetBookId);return '<div class="link-record"><span class="link-record-arrow">'+(link.type==='counterpart'?'↔':link.type==='sequel'?'→':'←')+'</span><span class="grow"><b>'+esc(target?title(target):'Missing novel')+'</b><small>'+esc(relationLabel(link.type))+'</small></span><button data-remove-novel-link="'+index+'" aria-label="Remove relationship">×</button></div>'}).join('');
  const body='<div class="stack"><p class="muted tiny">Connect this novel to another edition or to a related book in a series. Corresponding editions are linked in both directions; sequel relationships keep their direction.</p><div class="link-record-list">'+(rows||'<p class="muted tiny">No novel relationships yet.</p>')+'</div>'+novelPickerMarkup('novelLink','Search for a related novel','Type a novel title or author…')+'<label>Relationship<select id="novelLinkType"><option value="counterpart">↔ Corresponding / same novel (two-way)</option><option value="sequel">→ This novel is a prequel; selected novel is its sequel</option></select></label><div class="row"><span class="grow"></span><button id="saveNovelLink" class="primary">Add relationship</button></div></div>';
@@ -85,6 +86,7 @@ export function manageNovelLinks(book=state.book){
  });
 }
 export function manageChapterLinks(book=state.book,index=state.chapter){
+ if(book?.locked)return toast('Unlock editing first');
  const chapter=book?.chapters?.[index];if(!chapter)return;
  const existing=Array.isArray(chapter.links)?chapter.links:[];
  const rows=existing.map((link,linkIndex)=>{const target=books().find(item=>item.id===link.targetBookId);return '<div class="link-record"><span class="link-record-arrow">'+(link.type==='counterpart'?'↔':link.type==='next'?'→':'←')+'</span><span class="grow"><b>'+esc(target?title(target):'Missing novel')+'</b><small>'+esc(chapterTitle(target,Number(link.targetChapterIndex)))+' · '+esc(relationLabel(link.type))+'</small></span><button data-remove-chapter-link="'+linkIndex+'" aria-label="Remove chapter link">×</button></div>'}).join('');
