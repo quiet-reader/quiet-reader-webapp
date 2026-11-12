@@ -11,11 +11,12 @@ const HISTORY_KEY='qrBackupHistory';
 const DEVICE_ID_KEY='qrDeviceId';
 const DEVICE_NAME_KEY='qrDeviceName';
 const SESSION_STARTED_AT=Date.now();
+const INSTALLATION_STARTED_AT=(()=>{let value=Number(localStorage.getItem('qrInstallationStartedAt')||0);if(!value){value=Date.now();localStorage.setItem('qrInstallationStartedAt',String(value))}return value})();
 const APP_VERSION='3';
 function deviceId(){let id=localStorage.getItem(DEVICE_ID_KEY);if(!id){id=globalThis.crypto?.randomUUID?.()||('dev-'+Math.random().toString(36).slice(2));localStorage.setItem(DEVICE_ID_KEY,id)}return id}
 function backupHistory(){try{const value=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');return Array.isArray(value)?value:[]}catch{return []}}
 function saveBackupHistory(value){localStorage.setItem(HISTORY_KEY,JSON.stringify(value.slice(-100)))}
-function deviceMetadata(){let installed=Number(localStorage.getItem('qrInstallationStartedAt')||0);if(!installed){installed=Date.now();localStorage.setItem('qrInstallationStartedAt',String(installed))}return {deviceId:deviceId(),deviceName:localStorage.getItem(DEVICE_NAME_KEY)||'Unnamed device',application:'Quiet Reader',applicationVersion:APP_VERSION,platform:navigator.userAgent||'Unknown platform',sessionStartedAt:SESSION_STARTED_AT,installationStartedAt:installed}}
+function deviceMetadata(){return {deviceId:deviceId(),deviceName:localStorage.getItem(DEVICE_NAME_KEY)||'Unnamed device',application:'Quiet Reader',applicationVersion:APP_VERSION,platform:navigator.userAgent||'Unknown platform',sessionStartedAt:SESSION_STARTED_AT,installationStartedAt:INSTALLATION_STARTED_AT}}
 
 
 function clone(value){return structuredClone(value)}
@@ -109,7 +110,8 @@ async function buildArchive(selected){
   preferences
  };
  await writeJson(archive,records,'library.json',library,'library-index');
- const fingerprint=await sha256(encoder.encode(records.filter(entry=>entry.role!=='library-index').map(entry=>entry.path+' '+entry.sha256).sort().join('\n')+'\n'+JSON.stringify(selected)));
+ const collections=(()=>{try{return JSON.parse(localStorage.getItem('qrCollections')||'[]')}catch{return []}})();
+ const fingerprint=await sha256(encoder.encode(records.filter(entry=>entry.role!=='library-index').map(entry=>entry.path+' '+entry.sha256).sort().join('\n')+'\n'+JSON.stringify({selected,collections,theme:library.theme,preferences:library.preferences})));
  const metadata=deviceMetadata();
  const manifest={
   format:ARCHIVE_FORMAT,
@@ -118,7 +120,7 @@ async function buildArchive(selected){
   fingerprint,
   origin:metadata,
   backupHistory:backupHistory(),
-  collections:(()=>{try{return JSON.parse(localStorage.getItem('qrCollections')||'[]')}catch{return []}})(),
+  collections,
   encoding:'UTF-8',
   checksumAlgorithm:'SHA-256',
   libraryIndex:'library.json',
