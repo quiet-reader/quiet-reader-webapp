@@ -2,7 +2,7 @@ import {libraryState} from './state/library.js';import {freshBook} from './domai
 import {itemRepository as itemStore} from './infrastructure/persistence/item-repository.js';
 import {$,esc,toast,modal,closeModal,dataURL,uid} from './utils.js';
 import {refresh,openBook,setBookTab,drawBook} from './features/library/index.js';import {addEditEvent} from './features/history/index.js';import {confirmImagePreview} from './image-preview.js';
-import {openImageTranslation,renderImageTranslationOverlay,clearImageTranslationOverlay} from './features/image-translation/index.js';import {can} from './shared/policies.js';
+import {openImageTranslation,renderImageTranslationOverlay,clearImageTranslationOverlay} from './features/image-translation/index.js';import {getItemCollectionNames} from './features/collections/index.js';import {can} from './shared/policies.js';
 
 let sliderIndex=0;
 let viewerKeyHandler=null;let selectedImageIds=new Set();
