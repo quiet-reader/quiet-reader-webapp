@@ -1,7 +1,7 @@
 import {itemRepository} from './infrastructure/persistence/item-repository.js';
 import {esc,toast,modal,closeModal} from './utils.js';
 const KEY='qrCollections';
-function readCollections(){try{const value=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(value)?value:[]}catch{return []}}
+function readCollections(){try{const value=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(value)?value.map(item=>({...item,items:Array.isArray(item.items)?item.items:[]})):[]}catch{return []}}
 function writeCollections(value){localStorage.setItem(KEY,JSON.stringify(value))}
 function makeId(){return globalThis.crypto?.randomUUID?.()||('id-'+Date.now()+'-'+Math.random().toString(36).slice(2))}
 function referenceFor(type,book,childIndex=null){
