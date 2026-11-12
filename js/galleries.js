@@ -2,7 +2,7 @@ import {state,freshBook} from './state.js';
 import {put} from './db.js';
 import {$,esc,toast,modal,closeModal,dataURL,uid} from './utils.js';
 import {refresh,openBook,setBookTab,drawBook} from './library.js';import {addEditEvent} from './history.js';import {confirmImagePreview} from './image-preview.js';
-import {openImageTranslation,renderImageTranslationOverlay,clearImageTranslationOverlay} from './image-translation.js';
+import {openImageTranslation,renderImageTranslationOverlay,clearImageTranslationOverlay} from './image-translation.js';import {can} from './shared/policies.js';
 
 let sliderIndex=0;
 let viewerKeyHandler=null;let selectedImageIds=new Set();
@@ -36,10 +36,10 @@ export function createGallery(){
   };
  });
 }
-export function addGalleryImages(){if(!state.book||state.book.locked)return toast('Unlock editing first');$('galleryImageFiles')?.click()}
-export function addGalleryFolder(){if(!state.book||state.book.locked)return toast('Unlock editing first');$('galleryFolderFiles')?.click()}
+export function addGalleryImages(){if(!can(state.book,'gallery.manage'))return toast('Unlock editing first');$('galleryImageFiles')?.click()}
+export function addGalleryFolder(){if(!can(state.book,'gallery.manage'))return toast('Unlock editing first');$('galleryFolderFiles')?.click()}
 export async function importGalleryFiles(fileList){
- const book=state.book;if(!book||book.locked)return toast('Unlock editing first');
+ const book=state.book;if(!can(book,'gallery.manage'))return toast('Unlock editing first');
  const files=imageFiles(fileList||[]);if(!files.length)return toast('No supported images found');
  if(!(await confirmImagePreview(files,{title:'Preview gallery images',confirmLabel:'Add to gallery'})))return;
  const gallery=ensureGallery(book);let added=0;
@@ -177,7 +177,7 @@ function renameImage(image,name){
  image.name=base+ext;return true;
 }
 export async function pasteGalleryImages(){
- const book=state.book;if(!book||book.locked)return toast('Unlock editing first');
+ const book=state.book;if(!can(book,'gallery.manage'))return toast('Unlock editing first');
  if(!navigator.clipboard?.read)return toast('Clipboard image access is unavailable in this browser');
  try{const items=await navigator.clipboard.read();const files=[];for(const item of items){const type=item.types.find(value=>value.startsWith('image/'));if(type){const blob=await item.getType(type);files.push(new File([blob],'pasted-image-'+(files.length+1)+'.'+(type.split('/')[1]||'png'),{type}))}}
  if(!files.length)return toast('No image found in clipboard');

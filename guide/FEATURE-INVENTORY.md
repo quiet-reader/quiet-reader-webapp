@@ -117,3 +117,41 @@ If a feature is intentionally removed, record the explicit user-approved reason 
 - Compatibility/migration impact: No migration; old imports remain supported through `db.js`.
 - Tests run and outcome: Source-level inspection only; browser runtime and IndexedDB regression tests not run.
 - Known limitations / not tested: Existing modules still use the legacy facade and shared state; further boundary extraction remains.
+
+## V3 ownership and dependency baseline — 12 Nov 2026
+
+The detailed ownership and API index is [FEATURE-OWNERSHIP.md](FEATURE-OWNERSHIP.md); the observed import graph and known cycles are in [DEPENDENCY-MAP.md](DEPENDENCY-MAP.md). These documents are the canonical detailed maps. This inventory remains the high-level capability list.
+
+### New shared policy infrastructure
+
+- `js/shared/policies.js`: owns book-level capability decisions. Public API: `can(book, capability)` and `BOOK_CAPABILITY_NAMES`. It has no DOM, storage, state, or feature imports. Current capabilities cover metadata/tags/cover editing, book deletion, chapter create/edit/delete/rename/reorder, gallery management, and novel/chapter link management.
+- Consumers: app event handlers, library UI and delete operation, editor operations, chapter rename, link managers, and gallery book-level mutation entry points.
+- It does not own image-specific locks, storage writes, toasts, or UI state.
+
+### Current ownership snapshot
+
+- App composition and event routing: `js/app.js`.
+- Library/book records and library presentation: `js/library.js`, `js/state.js`.
+- Chapter text editing/import and embedded chapter images: `js/editor.js`.
+- Batch chapter rename: `js/chapter-tools.js`.
+- Reader navigation/search/progress/TTS: `js/reader.js`, `js/kokoro.js`, `js/kokoro-worker.js`.
+- Novel/chapter relationships: `js/links.js`.
+- Bookmarks/highlights and selection UI: `js/highlights.js`.
+- Reading/editing history: `js/history.js`.
+- Gallery and individual gallery-image operations: `js/galleries.js`.
+- Translation providers and translated chapter state: `js/translation.js`; image overlay integration: `js/image-translation.js`.
+- Backup import/export: `js/backup.js`; backup format reference: `docs/backup-format.md`.
+- EPUB and PDF import/export: `js/epub.js`, `js/pdf.js`.
+- IndexedDB adapter: `js/infrastructure/persistence/item-repository.js`; compatibility facade: `js/db.js`.
+- Theme and browser UI utilities: `js/themes.js`, `js/utils.js`.
+- Shared application state and new book creation defaults: `js/state.js`.
+- Cross-feature book-level authorization: `js/shared/policies.js`.
+
+### V3 change record
+
+- Change: introduce a central capability policy and publish the feature ownership/dependency/policy/data/change documentation set.
+- Runtime files changed: app, library, editor, chapter tools, links, galleries, service worker; new shared policy module.
+- Intended behaviour: preserve current lock semantics while sharing the decision function; no new user-facing workflow.
+- Data/schema: none; existing book.locked field remains unchanged.
+- Verification: static source inspection and targeted source replacements; no browser/runtime or regression suite run.
+- Known follow-up: remaining direct lock-based presentation checks and individual gallery-image lock rules are not all routed through the book-level capability module. Shared state and cross-feature imports remain in place.

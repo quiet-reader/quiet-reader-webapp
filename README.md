@@ -1,4 +1,4 @@
-> **Engineering rule:** Before implementing any feature, bug fix, UI change, or refactor, read the [Quiet Reader engineering guide](guide/README.md). Its architecture, data-preservation contract, feature inventory, and regression checklist are mandatory. Update the guide whenever the implementation changes.
+> **Engineering rule:** Before implementing any feature, bug fix, UI change, or refactor, read the [Quiet Reader engineering guide](guide/README.md). Its ownership map, dependency map, shared policy catalogue, data contract, change protocol, and checklist are mandatory. Keep the documentation synchronized with every implementation change.
 
 # Quiet Reader
 

@@ -133,3 +133,29 @@ Select relevant cases and run them. For architecture-wide changes, run the full 
 - Tests actually run: Static source inspection and exact-source replacement checks during implementation.
 - Tests not run: Browser UI, mobile/desktop, accessibility, lock/unlock interaction, paired novel/chapter link workflows, data backup/restore, and offline service-worker update.
 - Known limitations: None identified by static inspection; runtime behaviour remains unverified.
+
+## V3 documentation synchronization requirements
+
+For every change, add a dated entry to the feature inventory and complete a change record below. Review each architecture reference and update it if affected:
+
+- [ ] `FEATURE-OWNERSHIP.md`: owner, public API, data ownership, and consumers changed?
+- [ ] `DEPENDENCY-MAP.md`: imports, dependency direction, or cycles changed?
+- [ ] `SHARED-POLICIES.md`: capability, authorization rule, or enforcement point changed?
+- [ ] `DATA-CONTRACT.md` and `DATA-COMPATIBILITY.md`: record fields, persistence, backup, import/export, or migration changed?
+- [ ] `FAQ.md`: a new recurring architectural question or changed answer?
+- [ ] `ARCHITECTURE.md` / `ARCHITECTURE-STATUS.md`: boundaries, status, or known debt changed?
+- [ ] `README.md` / guide index: user-facing capability or entry-point guidance changed?
+
+If a document is reviewed and does not need editing, state "reviewed — no change" in the completion record. The goal is synchronized truth, not needless edits.
+
+## V3 architecture foundation record — 12 Nov 2026
+
+- Change: create `V3-feature` from `V2-feature`; add `js/shared/policies.js` and route primary book-lock operation/UI guards through the shared capability decision; expand the engineering guide into linked ownership, dependency, policy, data, change, FAQ, and status references.
+- Behaviour intended to change: no user-visible workflow intended to change. The same locked/unlocked outcomes should be produced by a shared function.
+- Behaviour required to remain the same: reading, export, bookmarks, highlights, progress, history, existing chapter/link/gallery operations while unlocked, and individual image lock semantics.
+- Data touched: none by the architecture code itself; `book.locked` remains the stored field.
+- Migration/backup impact: none intended.
+- Tests actually run: static inspection of current source and generated changes; GitHub source content checked after commit.
+- Tests not run: browser runtime, interaction tests, IndexedDB CRUD, backup/restore round-trip, import/export, mobile/desktop, accessibility, offline cache update, automated suite.
+- Known limitations: some presentation-only lock checks remain direct; no automated tests or runtime verification; shared state and known import cycles remain.
+- Guide files updated: README, guide index, architecture, inventory, data compatibility, checklist; new ownership, dependency, shared-policy, data-contract, change-protocol, FAQ, and architecture-status pages.

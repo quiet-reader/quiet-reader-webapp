@@ -102,3 +102,30 @@ For each migration and backup change, verify counts and IDs before/after and ver
 The implementation now routes the legacy `js/db.js` API through `js/infrastructure/persistence/item-repository.js`. This is an infrastructure-boundary change only. It retains the same IndexedDB database name, database version, object-store name, key path, CRUD semantics, and stored object payloads. It does not migrate, rewrite, re-key, normalize, or delete any user records.
 
 Existing feature modules may continue importing from `js/db.js` during gradual migration. New application/infrastructure work should target the repository boundary and must not introduce a second database or duplicate storage format. Any later change to the actual schema requires the full migration procedure in this document.
+
+## V3 stable data-contract summary
+
+This section makes the contract easier to find; the existing detailed preservation rules above remain authoritative.
+
+### Book record envelope
+
+- Identity: stable `id`; record discriminator `kind: "book"`.
+- Core descriptive fields: `source`, `title`, `author`, `cover`, optional metadata/tags/notes/rating.
+- Reading/editing content: `chapters[]`, each with its existing title/text/image/history fields.
+- User state: `locked`, `bookmarks[]`, `highlights[]`, `progress`, reading/editing history, and relationship/link fields where present.
+- Gallery records use the same book record envelope with `source: "gallery"` and a nested `gallery` payload. Individual image lock and history fields belong to gallery image entries.
+- Saved pasted chapters use `kind: "paste"` records and remain distinct from books.
+
+This is a descriptive inventory, not a closed schema. Optional and unknown fields must be preserved. Do not drop fields just because a current feature does not display them.
+
+### Storage boundary
+
+The canonical browser database remains `quietbook-v2`, database version `1`, object store `items`, key path `id`. The repository adapter in `js/infrastructure/persistence/item-repository.js` passes record payloads through without normalizing their shape. `js/db.js` remains a compatibility facade during gradual migration.
+
+### Capability policy is not a data migration
+
+V3 introduces `js/shared/policies.js` but does not change the meaning or storage of `book.locked`. It remains a boolean editing lock on the existing record. No capability map is persisted. UI and feature code derive permissions from the existing record at runtime.
+
+### Backup contract
+
+The current ZIP and legacy JSON formats remain as specified in [backup-format.md](../docs/backup-format.md). Architecture refactoring must not make backup payloads dependent on UI component state, module-private objects, or a specific future frontend.

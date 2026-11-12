@@ -1,12 +1,12 @@
 import {state} from './state.js';
 import {put} from './db.js';
 import {$,esc,toast,modal,closeModal} from './utils.js';
-import {drawBook,refresh} from './library.js';import {addEditEvent} from './history.js';
+import {drawBook,refresh} from './library.js';import {addEditEvent} from './history.js';import {can} from './shared/policies.js';
 
 export function renameChapters(){
  const book=state.book;
  if(!book?.chapters?.length)return toast('There are no chapters to rename');
- if(book.locked)return toast('Unlock this novel before renaming chapters');
+ if(!can(book,'chapter.rename'))return toast('Unlock this novel before renaming chapters');
  const selected=new Set();
  const body='<div class="stack"><label>Find chapters<input id="renameChapterSearch" type="search" placeholder="Search chapter titles…" autocomplete="off"></label><div class="row wrap"><button type="button" id="selectAllRenameChapters">Select all chapters</button><button type="button" id="clearRenameChapterSelection">Clear selection</button><span class="muted tiny" id="renameSelectionCount"></span></div><div id="renameChapterChoices" class="rename-chapter-choices" aria-label="Chapter selection"></div><p class="muted tiny">Rename selected chapters using the order below. Use <code>{n}</code> in the replacement for serial numbering. Regex capture groups such as <code>$1</code> are supported.</p><label>Rename order<select id="renameChapterOrder"><option value="ascending">Chapter 1 → last chapter</option><option value="descending">Last chapter → Chapter 1</option></select></label><label>Find (regular expression)<input id="renamePattern" value="^.*$" spellcheck="false"></label><label>Replace with<input id="renameReplacement" value="Chapter - {n}" spellcheck="false"></label><label>Regex flags<input id="renameFlags" value="" placeholder="g, i, m, etc."></label><div class="row"><button type="button" id="previewChapterRename">Preview</button><span class="muted tiny" id="renameCount"></span></div><div id="renamePreview" class="rename-preview"></div><div class="row"><span class="grow"></span><button type="button" id="applyChapterRename" class="primary">Rename selected chapters</button></div></div>';
  modal('Rename chapters',body,()=>{
@@ -35,7 +35,7 @@ export function renameChapters(){
   $('renameChapterOrder').onchange=preview;
   $('previewChapterRename').onclick=preview;
   $('applyChapterRename').onclick=async()=>{
-   if(book.locked)return toast('Unlock this novel before renaming chapters');
+   if(!can(book,'chapter.rename'))return toast('Unlock this novel before renaming chapters');
    const changes=preview();if(!changes?.length)return;
    if(!confirm('Rename '+changes.length+' chapter'+(changes.length===1?'':'s')+'?'))return;
    const now=Date.now();

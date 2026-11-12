@@ -184,3 +184,39 @@ Each phase must leave the branch buildable and usable. Do not combine a full dat
 - The adapter intentionally keeps the current database name (`quietbook-v2`), version (1), store (`items`), key path (`id`), and record payloads unchanged.
 - The service worker shell cache includes the new adapter and has been versioned for this asset change.
 - This is a first step, not completion of the target architecture. Existing feature modules still share state and some still import one another directly. Migrate one feature boundary at a time, update this status, and add tests before changing data contracts.
+
+## V3 architecture refinement
+
+### Composition root and feature ownership
+
+`js/app.js` is the composition root: it wires DOM events and calls feature APIs. It should not become the home for domain rules or persistence logic. Feature ownership and current public entry points are maintained in [FEATURE-OWNERSHIP.md](FEATURE-OWNERSHIP.md).
+
+### Dependency direction
+
+The intended direction is:
+
+1. Presentation/composition (`app.js`, DOM rendering and event wiring)
+2. Feature/application operations (library, reader, editor, links, galleries, marks, history, translation, import/export)
+3. Shared domain policies and contracts (`js/shared`)
+4. Infrastructure (IndexedDB repository, workers and browser APIs)
+
+Existing modules do not yet conform perfectly. See [DEPENDENCY-MAP.md](DEPENDENCY-MAP.md) for the observed imports and known cycles. Do not treat a proposed future boundary as if it were already enforced.
+
+### Shared policies
+
+Book-level editing authorization is centralized in `js/shared/policies.js`. The policy is capability-based and presentation-independent. Controls may call `can(book, capability)` to render disabled state; the operation itself must also call it before mutating data. This avoids relying on a disabled button as the security or correctness boundary.
+
+The current capability list is documented in [SHARED-POLICIES.md](SHARED-POLICIES.md). Image-level gallery locks remain a separate policy because they apply to individual gallery images rather than the whole book.
+
+### Gradual state and boundary migration
+
+Do not replace the shared `state.js` object wholesale. First reduce the number of modules that import and mutate unrelated state fields. Extract a feature-owned operation only when its inputs, outputs, and side effects can be stated clearly. Prefer passing a book/chapter reference or stable ID into an operation over making a module reach into unrelated global state.
+
+Avoid a large file move solely for appearance. A boundary is improved when ownership and permitted dependencies are clearer, not merely when a file is placed in a new directory.
+
+### V3 implementation status
+
+- Added the shared capability policy module and routed the main book-lock guards through it.
+- Added explicit feature ownership, dependency, policy, data-contract, change-protocol, FAQ, and architecture-status references.
+- No persisted record schema, IndexedDB database name/version/store, backup format, or service-worker hosting mode is intentionally changed.
+- Existing cross-feature imports, shared mutable state, and the reader/highlights cycle remain documented follow-up work.

@@ -7,7 +7,14 @@
 1. [Architecture and dependency rules](ARCHITECTURE.md)
 2. [Data preservation and compatibility contract](DATA-COMPATIBILITY.md)
 3. [Current feature inventory](FEATURE-INVENTORY.md)
-4. [Feature-change checklist](FEATURE-CHECKLIST.md)
+4. [Feature ownership map](FEATURE-OWNERSHIP.md)
+5. [Dependency map](DEPENDENCY-MAP.md)
+6. [Shared policy catalogue](SHARED-POLICIES.md)
+7. [Stable data contract](DATA-CONTRACT.md)
+8. [Change and documentation protocol](CHANGE-PROTOCOL.md)
+9. [Architecture FAQ](FAQ.md)
+10. [Current architecture assessment](ARCHITECTURE-STATUS.md)
+11. [Feature-change checklist](FEATURE-CHECKLIST.md)
 
 ## Purpose
 
@@ -45,3 +52,15 @@ If a change is blocked or a test cannot be run, record that clearly. Never mark 
 ## Architecture migration status
 
 The V2 architecture work is intended to be incremental. The guide and the first persistence boundary have been added. The persistence adapter preserves the existing database and record payloads; broader feature-boundary and desktop/mobile presentation work remains. Each subsequent commit must make small, reviewable changes and preserve a working application at every stage.
+
+## V3 architecture operating model
+
+V3 adds explicit ownership, dependency, policy, and data-contract references. Read these before choosing where a change belongs. The [change protocol](CHANGE-PROTOCOL.md) is the required procedure for keeping the implementation and documentation synchronized.
+
+The current architecture is still a modular monolith with legacy cross-feature imports. The maps describe the code that exists; they are not claims that every boundary has already been enforced. When code and a map disagree, inspect the code, correct the map in the same change, and record the discrepancy.
+
+The V3 shared policy module is `js/shared/policies.js`. It is intentionally small and contains book-level capability decisions only. Feature modules remain responsible for checking the relevant capability at the operation boundary; the UI may use the same decision to disable controls. Unknown capabilities deny access.
+
+## Documentation update rule
+
+Every code change must update the change record in `FEATURE-INVENTORY.md` and the completion record in `FEATURE-CHECKLIST.md`. Update ownership, dependency, policy, data-contract, FAQ, and architecture-status pages whenever the change affects their subject. Do not make irrelevant edits merely to create activity; explicitly mark a document as reviewed/no change in the change record when a change is architecture-wide.
