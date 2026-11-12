@@ -44,4 +44,4 @@ If a change is blocked or a test cannot be run, record that clearly. Never mark 
 
 ## Architecture migration status
 
-The V2 architecture work is intended to be incremental. This initial guide commit documents the rules and baseline. It does not itself migrate application code or user data. Subsequent commits must make small, reviewable changes and preserve a working application at every stage.
+The V2 architecture work is intended to be incremental. The guide and the first persistence boundary have been added. The persistence adapter preserves the existing database and record payloads; broader feature-boundary and desktop/mobile presentation work remains. Each subsequent commit must make small, reviewable changes and preserve a working application at every stage.
