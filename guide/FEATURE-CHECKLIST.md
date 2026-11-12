@@ -106,3 +106,17 @@ Select relevant cases and run them. For architecture-wide changes, run the full 
 - Tests not run:
 - Known limitations:
 - Guide files updated:
+
+
+## V2 initial architecture foundation record — 12 Nov 2026
+
+- Change / feature: Add mandatory engineering guide and introduce an IndexedDB repository adapter behind the existing database facade.
+- Branch and commit: `V2-feature`; see branch history (guide, adapter, facade, and service-worker cache commits).
+- Behaviour intended to change: Internal persistence ownership only; no UI or feature behaviour intended to change.
+- Behaviour required to remain the same: All current reading, library, editing, gallery, history, marks, translation, OCR, TTS, import/export, backup, lock, and link behaviour.
+- Data touched (or "none"): No user data touched by the code change; adapter retains `quietbook-v2` / version 1 / `items` / `id` and stores passed records unchanged.
+- Migration/backup impact: None; backup format and restore logic unchanged.
+- Tests actually run: Static source inspection of the current database adapter, its facade, and service-worker asset list.
+- Tests not run: Browser runtime, IndexedDB CRUD/transaction tests, mobile/desktop UI regression, import/export/backup round-trip, offline update, and automated test suite.
+- Known limitations: Existing features still import the compatibility facade; broader feature boundary migration has not yet been performed.
+- Guide files updated: README link, guide index, architecture, data compatibility, feature inventory, checklist.
