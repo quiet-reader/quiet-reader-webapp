@@ -86,7 +86,7 @@ export async function generateKokoro(text, { voice = DEFAULT_KOKORO_VOICE, speed
   return audio;
 }
 
-export async function playKokoroAudio(audio, { rate = 1, onStatus = () => {} } = {}) {
+export async function playKokoroAudio(audio, { rate = 1, onStatus = () => {}, onProgress = () => {} } = {}) {
   const { samples, sampleRate } = audio || {};
   if (!samples?.length) throw new Error('Kokoro returned empty audio');
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
