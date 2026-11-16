@@ -172,6 +172,8 @@ const KOKORO_BUFFER_SIZE=10;
 let kokoroQueue=new Map();
 let kokoroQueueEpoch=0;
 let kokoroQueueWorker=false;
+let kokoroTransitioning=false;
+let kokoroChapterEpoch=0;
 let kokoroSentenceUnits=[];
 let kokoroSentenceIndex=0;
 let autoReadCharOffset=0;
@@ -316,7 +318,8 @@ function speakCurrentParagraph(){
  return true;
 }
 function speakCurrentKokoroSentence(){
- if(!autoReadRunning||autoReadPaused)return;
+ if(!autoReadRunning||autoReadPaused||kokoroTransitioning)return;
+ const chapterEpoch=kokoroChapterEpoch;
  const unit=kokoroSentenceUnits[kokoroSentenceIndex];
  if(!unit){finishKokoroChapter();return}
  autoReadIndex=unit.nodeIndex;autoReadCharOffset=unit.charStart;
@@ -325,11 +328,11 @@ function speakCurrentKokoroSentence(){
  currentUtterance=marker;
  fillKokoroQueue();
  queuedKokoroAudio(kokoroSentenceIndex).then(audio=>{
-  if(currentUtterance!==marker||!autoReadRunning||autoReadPaused)return;
+  if(currentUtterance!==marker||chapterEpoch!==kokoroChapterEpoch||!autoReadRunning||autoReadPaused)return;
   if(!audio)throw new Error('No buffered audio for this sentence');
   marker.playing=true;
   playKokoroAudio(audio,{onStatus:setTTSStatus,onProgress:seconds=>{if(currentUtterance!==marker)return;const ratio=Math.max(0,Math.min(0.999,seconds/Math.max(0.01,audio.audioSeconds||audio.samples.length/(audio.sampleRate||24000))));autoReadCharOffset=unit.charStart+Math.floor(unit.text.length*ratio);saveAutoReadCursor()}}).then(()=>{
-   if(currentUtterance!==marker)return;
+   if(currentUtterance!==marker||chapterEpoch!==kokoroChapterEpoch)return;
    currentUtterance=null;
    if(autoReadRunning&&!autoReadPaused){
     kokoroSentenceIndex++;
@@ -340,34 +343,54 @@ function speakCurrentKokoroSentence(){
     else finishKokoroChapter();
    }
   }).catch(error=>{
-   if(currentUtterance!==marker)return;
+   if(currentUtterance!==marker||chapterEpoch!==kokoroChapterEpoch)return;
    currentUtterance=null;
    setTTSStatus('Kokoro playback error · '+(error?.message||'unknown error'));
    if(autoReadRunning&&!autoReadPaused)autoReadTimer=setTimeout(()=>speakCurrentKokoroSentence(),1000);
   });
  }).catch(error=>{
-  if(currentUtterance!==marker)return;
+  if(currentUtterance!==marker||chapterEpoch!==kokoroChapterEpoch)return;
   currentUtterance=null;
   setTTSStatus('Kokoro error · '+(error?.message||'unknown error'));
   if(autoReadRunning&&!autoReadPaused)autoReadTimer=setTimeout(()=>speakCurrentKokoroSentence(),1000);
  });
 }
 async function finishKokoroChapter(){
- if(!autoReadRunning||autoReadPaused)return;
- if(readerState.chapter<libraryState.book.chapters.length-1){
+ if(!autoReadRunning||autoReadPaused||kokoroTransitioning)return;
+ kokoroTransitioning=true;
+ const completedChapter=readerState.chapter;
+ const transitionEpoch=++kokoroChapterEpoch;
+ try{
   await saveProgress();
-  if(!autoReadRunning||autoReadPaused)return;
-  readerState.chapter++;
-  void recordReading(libraryState.book,readerState.chapter,0);
+  if(!autoReadRunning||autoReadPaused||readerState.chapter!==completedChapter||transitionEpoch!==kokoroChapterEpoch)return;
+  if(completedChapter>=libraryState.book.chapters.length-1){
+   kokoroTransitioning=false;
+   stopAutoRead();
+   toast('Reached the end of the novel');
+   return;
+  }
+  // Invalidate all work from the completed chapter before changing the DOM.
+  clearKokoroQueue();
+  readerState.chapter=completedChapter+1;
+  autoReadIndex=0;
+  autoReadCharOffset=0;
+  kokoroSentenceIndex=0;
+  kokoroSentenceUnits=[];
   drawReader();
   window.scrollTo({top:0,behavior:'auto'});
   rebuildKokoroSentenceUnits();
-  clearKokoroQueue();
-  fillKokoroQueue();
-  speakCurrentKokoroSentence();
- }else{
-  stopAutoRead();
-  toast('Reached the end of the novel');
+  saveAutoReadCursor();
+  void recordReading(libraryState.book,readerState.chapter,0);
+  kokoroTransitioning=false;
+  if(kokoroSentenceUnits.length){
+   fillKokoroQueue();
+   speakCurrentKokoroSentence();
+  }else{
+   // Empty chapters have no speech units; advance them through the same guarded path.
+   void finishKokoroChapter();
+  }
+ }finally{
+  if(transitionEpoch===kokoroChapterEpoch)kokoroTransitioning=false;
  }
 }
 function scheduleAutoRead(){
@@ -429,6 +452,8 @@ export function pauseAutoRead(){
  setTTSStatus('Paused');
 }
 export function stopAutoRead(showToast=true){
+ kokoroChapterEpoch++;
+ kokoroTransitioning=false;
  if(autoReadRunning&&currentUtterance&&!currentUtterance.kokoro&&Number.isFinite(currentUtterance.charIndex))autoReadCharOffset=currentUtterance.charIndex;
  saveAutoReadCursor();
  clearTimeout(autoReadTimer);
