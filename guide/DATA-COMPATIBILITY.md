@@ -138,3 +138,8 @@ The current ZIP and legacy JSON formats remain as specified in [backup-format.md
 - Backup ZIP manifests optionally include `origin` (device ID/name, application/version, platform, session start and installation start), `fingerprint`, `backupHistory`, and `collections`. Older ZIP and legacy JSON backups remain readable; missing metadata is treated as absent.
 - Local history and device settings use localStorage keys `qrBackupHistory`, `qrDeviceId`, `qrDeviceName`, and `qrInstallationStartedAt`. Restoring a backup merges historical entries and collections; current local device identity remains local to the receiving installation.
 - Deleting a source record or nested chapter/image leaves the collection itself intact; invalid references are pruned when collections are rendered.
+
+
+## 20 Nov 2026 — Offline update compatibility review
+
+Reviewed for the App Updates feature: **no persisted data changes**. The existing `quietbook-v2` database name, version 1, `items` object store, `id` key path, record envelopes, ZIP/legacy JSON backup formats, and localStorage preference keys are unchanged. Service-worker Cache Storage contains application assets only; app updates do not clear, recreate, migrate, or overwrite user records. Browser-level site-data clearing remains outside the app's control and can erase local data.
