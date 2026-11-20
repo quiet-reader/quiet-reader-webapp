@@ -24,6 +24,8 @@ function renderConnection() {
 }
 
 function renderRegistration() {
+  const installButton = byId('appUpdateInstall');
+  if (installButton) installButton.disabled = !registration?.waiting;
   if (!('serviceWorker' in navigator)) {
     setStatus('Offline support unavailable', 'This browser does not support service workers. The library still stays in this browser while site data is retained.');
     return;
