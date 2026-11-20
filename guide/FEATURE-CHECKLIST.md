@@ -195,3 +195,18 @@ If a document is reviewed and does not need editing, state "reviewed — no chan
 - Implemented: pin/favourite card actions, pinned-first ordering within existing category, virtual collections for books/chapters/gallery images, stable references and invalid-reference pruning.
 - Implemented: ZIP backup includes collection/history/provenance metadata; restore merges metadata and remains additive for IndexedDB items.
 - Tests not run: browser functional tests, offline service-worker update, mobile/desktop layout, large archive and cross-device restore. Source inspection only.
+
+
+## 20 Nov 2026 — Offline app updates completion record
+
+- Change / feature: add a first-class App Updates screen, offline shell status, manual update check, and explicit install/reload flow.
+- Branch: `feature/offline-app-updates`; based on deployed `V3-feature` `663c2a2`.
+- Behaviour intended to change: expose offline readiness and user-controlled installation of future website versions; one-time transition from the old v55 worker activates automatically to make the new UI available.
+- Behaviour required to remain the same: library, reader, editor, TTS, imports/exports, backups, bookmarks, highlights, notes, history, and all persisted records.
+- Data touched: none. Existing `quietbook-v2` IndexedDB database and localStorage preferences are not modified by update installation.
+- Migration/backup impact: none; runtime cache is preserved across shell updates to retain previously downloaded Kokoro assets.
+- Tests actually run: verified all existing service-worker shell paths exist in the V3-feature tree; static inspection of the service-worker lifecycle, UI wiring, and unchanged persistence contract.
+- Tests not run: browser runtime, offline airplane-mode reload, first-install flow, update installation across multiple open tabs, Kokoro model offline replay, backup/restore round-trip, automated regression suite.
+- Deployment: pending merge to `V3-feature` and GitHub Pages workflow success.
+- Guide files updated: README, ARCHITECTURE, DATA-COMPATIBILITY, FEATURE-INVENTORY, FEATURE-OWNERSHIP, DEPENDENCY-MAP, FEATURE-CHECKLIST.
+- Known limitations: service-worker update detection depends on bumping the shell cache version when app-shell files change; remote translation providers still require internet; first-time CDN/model downloads require internet.
