@@ -77,3 +77,11 @@ No direct feature implementation cycle is intended in the current facade graph. 
 - The facade delegates to `collections.js`, which uses `itemRepository` and shared DOM utilities; it does not import library or app modules.
 - `service-worker.js` pre-caches both the implementation and facade.
 - No reverse dependency from collections into library, reader, or app is introduced.
+
+
+## Offline app updates (20 Nov 2026)
+
+- `app.js` imports `features/offline-updates/index.js` and calls `initializeOfflineUpdates()` during startup.
+- The feature module depends only on browser service-worker/connection APIs and the screen's DOM IDs; it does not import application data, state slices, or persistence.
+- `presentation/navigation.js` includes `app-updates` in the supported screen list.
+- `service-worker.js` owns the shell/runtime caches and receives the `SKIP_WAITING` message from the feature module. No feature-to-feature or persistence dependency is added.
