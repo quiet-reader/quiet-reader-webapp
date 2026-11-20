@@ -742,3 +742,15 @@ select:focus{animation:select-focus-in .2s ease both}
 .book-card-quick-actions button[data-pin-item].active{filter:none;opacity:1;background:#f0c84b33;border-color:#f0c84b;color:#f0c84b}
 
 .book-card-quick-actions button[data-pin-item]{font-size:19px!important;filter:grayscale(1);opacity:.48}.book-card-quick-actions button[data-pin-item].active{filter:none;opacity:1}.book-card-quick-actions button[data-pin-item]::first-letter{font-size:inherit}
+
+/* Offline app update screen */
+.app-update-panel{gap:14px}
+.app-update-panel h2,.app-update-explainer h2{font-size:16px;margin:0}
+.app-update-panel p,.app-update-explainer p{margin:0}
+.app-update-connection{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:20px;padding:3px 10px;font-size:11px}
+.app-update-connection:before{content:'';width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.app-update-connection[data-state="online"]:before{background:#8bc58b}
+.app-update-connection[data-state="offline"]:before{background:#e5a16b}
+.app-update-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px;color:var(--muted);font-size:11px}
+.app-update-explainer{margin-top:14px}
+.app-update-explainer code{color:var(--fg);background:var(--panel2);padding:2px 5px;border-radius:4px}

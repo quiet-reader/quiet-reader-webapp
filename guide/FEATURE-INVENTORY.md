@@ -197,3 +197,14 @@ A follow-up pass added operation-boundary checks to chapter saving and paste-ima
 - Added pin and favourite flags to book records; pins sort to the top within the active library category and remain in that category.
 - Added virtual collections for books, chapters and gallery images. Collections store stable ID references, do not duplicate source content, and automatically prune invalid references while preserving empty collections.
 - Verification status: source-level inspection only; browser and offline smoke tests not run in this environment.
+
+
+## 20 Nov 2026 — Offline app updates and cache lifecycle
+
+- Added **App updates** to the main navigation drawer beside backup/device tools.
+- Added online/offline status, manual service-worker update check, waiting-update status, and explicit install/reload action.
+- Versioned the application shell cache and retained the runtime cache across shell updates so previously downloaded Kokoro runtime/model assets are not discarded by app upgrades.
+- The service worker caches the full known same-origin module shell, navigation document, styles, favicon, and optional CDN runtime scripts; supported CDN/model hosts are cached on first successful fetch.
+- Data contract unchanged: no writes, migrations, resets, or cache coupling to `quietbook-v2` IndexedDB records. Existing browser preferences remain untouched.
+- Owner: `js/features/offline-updates/index.js` (public facade and screen controller); infrastructure: `service-worker.js`; presentation: `index.html`, `presentation/navigation.js`, `css/main.css`.
+- Verification: static source and shell-path checks; GitHub Pages deployment check pending after merge. Browser airplane-mode and update-preservation tests remain outstanding.

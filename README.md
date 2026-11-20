@@ -55,6 +55,12 @@ Available source types:
 
 Open the repository through a local static server, or enable GitHub Pages. No build step is required. JSZip and PDF.js are loaded from CDNs for EPUB and PDF support; Kokoro runtime/model assets are also fetched when the Kokoro engine is used.
 
+## Offline access and app updates
+
+Quiet Reader caches its application shell, JavaScript modules, styles and supported CDN assets with a versioned service worker. After the first successful online load and cache installation, the website can be closed and reopened while offline. Previously downloaded Kokoro model/runtime files are retained in the runtime cache; the first model download still requires internet. Open **App updates** from the main navigation drawer to check for a newer website deployment. New versions are downloaded in the background and wait for the user to choose **Install update & reload**.
+
+Installing an app update replaces only the application cache. It does not clear or recreate the existing `quietbook-v2` IndexedDB database, the `items` store, or localStorage preferences. Browser-level clearing of site data still deletes local content, so continue exporting backups.
+
 ## Local storage and compatibility
 
 The app uses the `quietbook-v2` IndexedDB database and its `items` object store. Existing records from the earlier reader remain in the same browser profile and origin. The app does not require an account or application server for its library. Browser storage is not a substitute for a backup: export a backup before clearing site data, changing browser profiles or testing experimental builds.
