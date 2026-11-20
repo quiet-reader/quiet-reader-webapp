@@ -265,3 +265,13 @@ The reader no longer imports the highlights implementation. The composition root
 - Feature implementations import their owned state slices, not the aggregate `state.js`.
 - Feature persistence calls go through `itemRepository`.
 - `db.js` and `state.js` are compatibility facades, not preferred dependencies for new feature code.
+
+
+## 10. Offline shell and update lifecycle
+
+- `service-worker.js` owns versioned same-origin app-shell caching, offline navigation fallback, and a persistent runtime cache for previously downloaded supported CDN/model assets.
+- `js/features/offline-updates/index.js` owns the user-facing update workflow: status, manual check, and explicit activation of a waiting worker.
+- New shell versions are installed into a separate cache before activation. Existing shell caches are retained until the new worker activates; the runtime cache is preserved across shell updates.
+- A waiting worker is activated only after the user selects **Install update & reload**. The one-time migration from the prior v55 worker activates automatically so existing installations can receive the new update UI.
+- The service worker does not own or mutate IndexedDB/localStorage. The existing `quietbook-v2` persistence contract remains independent of app cache lifecycle.
+- When changing the static app shell in future releases, bump `SHELL_CACHE` and `APP_SHELL_VERSION` together and add any new required same-origin modules to `SHELL`.
