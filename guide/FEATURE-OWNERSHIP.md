@@ -107,3 +107,12 @@ The public entry points are explicit facades. Consumers should import these path
 - Responsibilities: persist named virtual collection definitions in `qrCollections`, maintain stable references to book/chapter/gallery-image IDs, prune invalid references while retaining collections, and update book-level pin/favourite flags through the item repository.
 - Public API: `addToCollection(type, book, childIndex)`, `togglePin(book)`, `toggleFavorite(book)`, `renderCollections(host)`.
 - Persistence: collection definitions in localStorage; `pinned` and `favorite` optional fields on book records. No DB schema change.
+
+
+## Offline app updates
+
+- Owner: `js/features/offline-updates/index.js`.
+- Responsibilities: register the app service worker, display connection/cache/update state, request an update check, and ask a waiting worker to activate only after explicit user action.
+- UI entry point: **App updates** in the main navigation drawer; screen markup is in `index.html` and screen switching is owned by `presentation/navigation.js`.
+- Infrastructure boundary: `service-worker.js` owns shell/runtime cache installation, offline navigation fallback, cache-version lifecycle, and the `SKIP_WAITING` message contract.
+- Persisted user data: none. The feature must never clear IndexedDB, localStorage, backups, or user content. The runtime cache is intentionally retained across app-shell updates to preserve previously downloaded Kokoro assets.
